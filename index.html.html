@@ -1,0 +1,1666 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Coder Tech JAMB Assistance</title>
+<style>
+body{font-family:Arial,sans-serif;background:#eef2f7;margin:0;padding:0;}
+header{background:#0b5ed7;color:white;padding:20px;text-align:center;box-shadow:0 2px 6px rgba(0,0,0,0.2);}
+.container{width:90%;max-width:900px;margin:20px auto;padding:25px;background:white;border-radius:10px;box-shadow:0 0 12px rgba(0,0,0,0.2);}
+button{padding:10px 18px;margin:5px;font-size:14px;background:#0b5ed7;color:white;border:none;border-radius:5px;cursor:pointer;transition:0.3s;}
+button:hover{background:#084298;}
+input{padding:10px;margin:5px;width:95%;border-radius:5px;border:1px solid #ccc;}
+.option{background:#f2f2f2;padding:12px;margin:8px;border-radius:6px;cursor:pointer;transition:0.3s;}
+.option:hover{background:#ddd;}
+.correct{background:#28a745;color:white;}
+.wrong{background:#dc3545;color:white;}
+#timer{font-size:18px;color:red;margin-bottom:10px;font-weight:bold;}
+#explanation{margin-top:10px;padding:10px;background:#f0f0f0;border-radius:6px;display:none;}
+#progress-container{width:100%;background:#ddd;border-radius:10px;margin-bottom:15px;}
+#progress-bar{width:0%;height:20px;background:#28a745;border-radius:10px;transition:width 0.4s;}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));grid-gap:10px;}
+.subject-btn{padding:12px;background:#0b5ed7;color:white;border-radius:8px;text-align:center;cursor:pointer;transition:0.3s;}
+.subject-btn:hover{background:#084298;}
+#attemptContainer{margin-top:15px;display:none;}
+</style>
+</head>
+<body>
+<header>
+<h1>Coder Tech JAMB Assistance</h1>
+<p>Practice JAMB CBT Exams</p>
+</header>
+
+<div class="container" id="home">
+<h2>Login / Register</h2>
+<input id="stuName" placeholder="Full Name"><br>
+<input id="stuEmail" placeholder="Email"><br>
+<input id="stuPass" type="password" placeholder="Password"><br>
+<button onclick="register()">Register</button>
+<button onclick="login()">Login</button>
+</div>
+
+<div class="container" id="dashboard" style="display:none">
+<h2>Welcome <span id="userName"></span></h2>
+<h3>Select Subject</h3>
+<div class="grid" id="subjectGrid"></div>
+<div id="attemptContainer">
+  <button id="attemptBtn">Attempt Quiz</button>
+</div>
+</div>
+
+<div class="container" id="quiz" style="display:none">
+<div id="timer"></div>
+<div id="progress-container"><div id="progress-bar"></div></div>
+<h3 id="question"></h3>
+<div id="options"></div>
+<div id="explanation"></div>
+<button onclick="nextQuestion()">Next Question</button>
+<button onclick="backToDashboard()">Back to Dashboard</button>
+</div>
+
+<div class="container" id="result" style="display:none">
+<h2 id="score"></h2>
+<div id="review"></div>
+<button onclick="restart()">Practice Again</button>
+</div>
+
+<script>
+let loggedUser=null;
+function register(){
+  let n=document.getElementById('stuName').value.trim();
+  let e=document.getElementById('stuEmail').value.trim();
+  let p=document.getElementById('stuPass').value.trim();
+  if(!n||!e||!p){alert('Fill all fields'); return;}
+  if(localStorage.getItem(e)){alert('Email already registered'); return;}
+  localStorage.setItem(e,JSON.stringify({name:n,email:e,password:p}));
+  alert('Account created, now login');
+}
+function login(){
+  let e=document.getElementById('stuEmail').value.trim();
+  let p=document.getElementById('stuPass').value.trim();
+  let user=JSON.parse(localStorage.getItem(e));
+  if(user && user.password===p){loggedUser=user; showDashboard();} else {alert('Invalid login');}
+}
+function backToDashboard(){
+  clearInterval(timer);
+  document.getElementById('quiz').style.display='none';
+  showDashboard();
+}
+
+const subjects=["English","Mathematics","Physics","Chemistry","Biology","Economics","Government","Literature","Commerce","Accounting","Geography","CRS","IRS","Agriculture","Civic Education"];
+let selectedSubject = null;
+
+function showDashboard(){
+  document.getElementById('home').style.display='none';
+  document.getElementById('dashboard').style.display='block';
+  document.getElementById('userName').innerText=loggedUser.name;
+
+  selectedSubject = null;
+  document.getElementById('attemptContainer').style.display = 'none';
+
+  let html='';
+  subjects.forEach(s=>{
+    html+=`<div class='subject-btn' onclick="selectSubject('${s}', this)">${s}</div>`;
+  });
+  document.getElementById('subjectGrid').innerHTML=html;
+}
+
+function selectSubject(sub, el){
+  selectedSubject = sub;
+  // Highlight selected
+  Array.from(document.getElementsByClassName('subject-btn')).forEach(btn=>btn.style.background='#0b5ed7');
+  el.style.background='#084298';
+  // Show attempt button
+  document.getElementById('attemptContainer').style.display = 'block';
+}
+
+document.getElementById('attemptBtn').onclick = ()=>{
+  if(selectedSubject) startQuiz(selectedSubject);
+}
+
+// ===== FULL 15 SUBJECTS WITH 50 HARD QUESTIONS EACH =====
+const QUESTION_BANK={
+"English":[ 
+{q:"Choose the word opposite in meaning to 'abundant'.",o:["Scarce","Plenty","Excess","Enough"],a:"Scarce",e:"Scarce means very little or insufficient, opposite of abundant."},
+
+{q:"Identify the correctly punctuated sentence.",o:["John said I am coming.","John said, I am coming.","John said 'I am coming'.","John said, 'I am coming.'"],a:"John said, 'I am coming.'",e:"Direct speech requires comma and quotation marks."},
+
+{q:"Choose the correct synonym for 'rapid'.",o:["Slow","Fast","Late","Weak"],a:"Fast",e:"Rapid means very fast or quick."},
+
+{q:"Select the word that best completes the sentence: She is afraid _____ snakes.",o:["of","for","by","with"],a:"of",e:"The correct preposition used with afraid is 'of'."},
+
+{q:"Which word is correctly spelled?",o:["Definately","Definitely","Definatly","Definetly"],a:"Definitely",e:"Definitely is the correct spelling."},
+
+{q:"Choose the antonym of 'generous'.",o:["Kind","Selfish","Helpful","Friendly"],a:"Selfish",e:"Selfish means unwilling to share."},
+
+{q:"Identify the noun in the sentence: The boy kicked the ball.",o:["boy","kicked","the","ball"],a:"boy",e:"A noun names a person, place or thing."},
+
+{q:"Choose the correct plural form of 'child'.",o:["Childs","Children","Childes","Childrens"],a:"Children",e:"Children is the irregular plural of child."},
+
+{q:"Which is a verb?",o:["Run","Table","Blue","Happy"],a:"Run",e:"Run expresses an action."},
+
+{q:"Choose the correct option: She _____ to school yesterday.",o:["go","gone","went","going"],a:"went",e:"Past tense of go is went."},
+
+{q:"Identify the adjective in the sentence: The tall man is here.",o:["man","is","tall","here"],a:"tall",e:"Adjectives describe nouns."},
+
+{q:"Choose the correct article: _____ apple a day keeps the doctor away.",o:["A","An","The","Some"],a:"An",e:"An is used before vowel sounds."},
+
+{q:"Choose the synonym of 'ancient'.",o:["Old","Modern","New","Young"],a:"Old",e:"Ancient means very old."},
+
+{q:"Choose the antonym of 'increase'.",o:["Add","Rise","Reduce","Grow"],a:"Reduce",e:"Reduce means to make smaller."},
+
+{q:"Which sentence is correct?",o:["She don't like rice.","She doesn't like rice.","She not like rice.","She didn't likes rice."],a:"She doesn't like rice.",e:"Correct use of present simple negative."},
+
+{q:"Choose the correct tense: They _____ football now.",o:["play","playing","are playing","played"],a:"are playing",e:"Present continuous tense."},
+
+{q:"Identify the pronoun.",o:["He","Book","Run","Chair"],a:"He",e:"He replaces a noun."},
+
+{q:"Choose the word closest in meaning to 'brave'.",o:["Cowardly","Bold","Weak","Fearful"],a:"Bold",e:"Bold means brave."},
+
+{q:"Choose the antonym of 'victory'.",o:["Success","Triumph","Defeat","Win"],a:"Defeat",e:"Defeat is opposite of victory."},
+
+{q:"Select the correct word: She _____ her homework.",o:["done","did","do","doing"],a:"did",e:"Did is past tense of do."},
+
+{q:"Choose the correct preposition: He arrived _____ Lagos yesterday.",o:["in","at","on","for"],a:"in",e:"Cities use 'in'."},
+
+{q:"Choose the correct spelling.",o:["Seperate","Separate","Seperete","Seperat"],a:"Separate",e:"Separate is the correct spelling."},
+
+{q:"Choose the synonym of 'happy'.",o:["Sad","Joyful","Angry","Weak"],a:"Joyful",e:"Joyful means happy."},
+
+{q:"Choose the antonym of 'bright'.",o:["Shiny","Dark","Light","Clear"],a:"Dark",e:"Dark is opposite of bright."},
+
+{q:"Identify the adverb.",o:["Quickly","Quick","Run","Table"],a:"Quickly",e:"Adverbs modify verbs."},
+
+{q:"Choose the correct sentence.",o:["He go to school daily.","He goes to school daily.","He going school daily.","He gone to school daily."],a:"He goes to school daily.",e:"Singular subject requires 'goes'."},
+
+{q:"Choose the correct plural.",o:["Woman","Women","Womans","Womens"],a:"Women",e:"Women is plural of woman."},
+
+{q:"Choose synonym of 'difficult'.",o:["Hard","Easy","Soft","Simple"],a:"Hard",e:"Hard means difficult."},
+
+{q:"Choose antonym of 'early'.",o:["Late","Soon","Quick","Fast"],a:"Late",e:"Late is opposite of early."},
+
+{q:"Identify the conjunction.",o:["And","Book","Table","Chair"],a:"And",e:"Conjunctions join words or clauses."},
+
+{q:"Choose correct sentence.",o:["I am taller than him.","I am tallest than him.","I am more tall than him.","I am tall than him."],a:"I am taller than him.",e:"Correct comparative form."},
+
+{q:"Choose synonym of 'assist'.",o:["Help","Stop","Break","Push"],a:"Help",e:"Assist means help."},
+
+{q:"Choose antonym of 'strong'.",o:["Powerful","Weak","Solid","Hard"],a:"Weak",e:"Weak is opposite of strong."},
+
+{q:"Identify the interjection.",o:["Wow!","Run","Chair","Table"],a:"Wow!",e:"Interjections express emotion."},
+
+{q:"Choose correct tense: She _____ eaten.",o:["has","have","had","having"],a:"has",e:"Present perfect tense uses 'has'."},
+
+{q:"Choose synonym of 'smart'.",o:["Intelligent","Foolish","Weak","Lazy"],a:"Intelligent",e:"Smart means intelligent."},
+
+{q:"Choose antonym of 'clean'.",o:["Dirty","Neat","Pure","Clear"],a:"Dirty",e:"Dirty is opposite of clean."},
+
+{q:"Choose correct word: The sun _____ in the east.",o:["rise","rises","rose","rising"],a:"rises",e:"Singular subject uses rises."},
+
+{q:"Choose synonym of 'begin'.",o:["Start","End","Stop","Close"],a:"Start",e:"Begin means start."},
+
+{q:"Choose antonym of 'accept'.",o:["Receive","Reject","Take","Agree"],a:"Reject",e:"Reject means refuse."},
+
+{q:"Choose correct spelling.",o:["Accomodate","Accommodate","Acommodate","Acomodate"],a:"Accommodate",e:"Correct spelling is accommodate."},
+
+{q:"Choose synonym of 'dangerous'.",o:["Safe","Risky","Calm","Easy"],a:"Risky",e:"Dangerous means risky."},
+
+{q:"Choose antonym of 'honest'.",o:["Truthful","Dishonest","Faithful","Sincere"],a:"Dishonest",e:"Dishonest is opposite of honest."},
+
+{q:"Choose correct sentence.",o:["They was here.","They were here.","They is here.","They be here."],a:"They were here.",e:"Plural subject uses were."},
+
+{q:"Choose synonym of 'rich'.",o:["Wealthy","Poor","Hungry","Weak"],a:"Wealthy",e:"Rich means wealthy."},
+
+{q:"Choose antonym of 'peace'.",o:["Calm","War","Rest","Quiet"],a:"War",e:"War is opposite of peace."},
+
+{q:"Choose synonym of 'famous'.",o:["Popular","Unknown","Hidden","Silent"],a:"Popular",e:"Famous means widely known."},
+
+{q:"Choose antonym of 'open'.",o:["Close","Wide","Free","Clear"],a:"Close",e:"Close is opposite of open."},
+
+{q:"Choose correct form: She _____ singing.",o:["is","are","were","be"],a:"is",e:"Singular subject takes 'is'."},
+
+{q:"Choose synonym of 'careful'.",o:["Cautious","Careless","Lazy","Slow"],a:"Cautious",e:"Careful means cautious."}
+/* 50 hard questions */ ],
+ "Mathematics":[
+
+{q:"What is 7 × 8?",o:["54","56","64","48"],a:"56",e:"7 multiplied by 8 equals 56."},
+
+{q:"Solve: 15 + 9",o:["24","25","23","26"],a:"24",e:"15 + 9 = 24."},
+
+{q:"What is the square of 12?",o:["124","144","132","142"],a:"144",e:"12 × 12 = 144."},
+
+{q:"Solve: 36 ÷ 6",o:["5","6","7","8"],a:"6",e:"36 divided by 6 equals 6."},
+
+{q:"Find the value of 9²",o:["18","27","81","72"],a:"81",e:"9 × 9 = 81."},
+
+{q:"What is 25% of 200?",o:["25","40","50","75"],a:"50",e:"25% means 25/100 × 200 = 50."},
+
+{q:"Solve: 4(6 + 2)",o:["32","24","28","30"],a:"32",e:"6 + 2 = 8 then 4 × 8 = 32."},
+
+{q:"What is the cube of 3?",o:["9","18","27","36"],a:"27",e:"3 × 3 × 3 = 27."},
+
+{q:"Solve: 5 + 6 × 3",o:["33","23","21","18"],a:"23",e:"BODMAS: 6×3=18 then 18+5=23."},
+
+{q:"What is the value of √49?",o:["6","7","8","9"],a:"7",e:"7 × 7 = 49."},
+
+{q:"Solve: 45 − 18",o:["27","26","28","29"],a:"27",e:"45 minus 18 equals 27."},
+
+{q:"What is 10³?",o:["100","1000","300","30"],a:"1000",e:"10 × 10 × 10 = 1000."},
+
+{q:"Find the perimeter of a square with side 5.",o:["10","20","25","15"],a:"20",e:"Perimeter = 4 × side = 20."},
+
+{q:"What is the area of a square with side 6?",o:["12","24","36","30"],a:"36",e:"Area = side × side = 36."},
+
+{q:"Solve: 72 ÷ 8",o:["6","7","8","9"],a:"9",e:"72 divided by 8 = 9."},
+
+{q:"What is 15% of 100?",o:["10","20","15","25"],a:"15",e:"15% of 100 equals 15."},
+
+{q:"Solve: 3² + 4²",o:["7","25","12","10"],a:"25",e:"3²=9 and 4²=16; 9+16=25."},
+
+{q:"Find the value of 2⁵.",o:["10","16","32","64"],a:"32",e:"2 × 2 × 2 × 2 × 2 = 32."},
+
+{q:"What is the value of √81?",o:["8","9","7","6"],a:"9",e:"9 × 9 = 81."},
+
+{q:"Solve: 64 ÷ 4",o:["14","15","16","18"],a:"16",e:"64 divided by 4 equals 16."},
+
+{q:"What is the sum of angles in a triangle?",o:["90°","180°","360°","270°"],a:"180°",e:"The sum of angles in any triangle is 180 degrees."},
+
+{q:"Solve: 100 − 45",o:["65","55","50","60"],a:"55",e:"100 minus 45 equals 55."},
+
+{q:"What is 8²?",o:["16","64","32","48"],a:"64",e:"8 × 8 = 64."},
+
+{q:"Find the average of 4, 6, 8.",o:["5","6","7","8"],a:"6",e:"(4+6+8)/3 = 6."},
+
+{q:"Solve: 9 × 9",o:["81","72","90","99"],a:"81",e:"9 multiplied by 9 equals 81."},
+
+{q:"What is the value of √36?",o:["5","6","7","8"],a:"6",e:"6 × 6 = 36."},
+
+{q:"Solve: 50 + 70",o:["110","120","130","140"],a:"120",e:"50 + 70 = 120."},
+
+{q:"Find the area of rectangle: length 10, width 5.",o:["50","40","60","30"],a:"50",e:"Area = length × width = 50."},
+
+{q:"Solve: 18 × 2",o:["34","36","38","32"],a:"36",e:"18 × 2 = 36."},
+
+{q:"What is 6³?",o:["36","216","18","108"],a:"216",e:"6 × 6 × 6 = 216."},
+
+{q:"Solve: 90 ÷ 10",o:["8","9","10","11"],a:"9",e:"90 divided by 10 = 9."},
+
+{q:"Find 20% of 150.",o:["25","30","35","40"],a:"30",e:"20/100 × 150 = 30."},
+
+{q:"Solve: 7 + 8 + 9",o:["22","23","24","25"],a:"24",e:"7 + 8 + 9 = 24."},
+
+{q:"Find √64.",o:["6","7","8","9"],a:"8",e:"8 × 8 = 64."},
+
+{q:"Solve: 11 × 11",o:["111","121","131","141"],a:"121",e:"11 multiplied by 11 equals 121."},
+
+{q:"What is the perimeter of rectangle (6,4)?",o:["20","18","22","24"],a:"20",e:"Perimeter = 2(6+4)=20."},
+
+{q:"Solve: 200 ÷ 5",o:["30","35","40","45"],a:"40",e:"200 divided by 5 = 40."},
+
+{q:"Find 5².",o:["20","25","30","15"],a:"25",e:"5 × 5 = 25."},
+
+{q:"Solve: 14 + 16",o:["28","30","32","26"],a:"30",e:"14 + 16 = 30."},
+
+{q:"Find √100.",o:["9","10","11","12"],a:"10",e:"10 × 10 = 100."},
+
+{q:"Solve: 13 × 2",o:["24","25","26","27"],a:"26",e:"13 × 2 = 26."},
+
+{q:"Find the area of triangle base=10 height=6.",o:["30","40","20","50"],a:"30",e:"Area = 1/2 × base × height = 30."},
+
+{q:"Solve: 80 − 35",o:["45","50","55","60"],a:"45",e:"80 minus 35 equals 45."},
+
+{q:"Find 3⁴.",o:["27","64","81","12"],a:"81",e:"3 × 3 × 3 × 3 = 81."},
+
+{q:"Solve: 16 × 3",o:["48","36","42","40"],a:"48",e:"16 × 3 = 48."},
+
+{q:"Find √121.",o:["10","11","12","13"],a:"11",e:"11 × 11 = 121."},
+
+{q:"Solve: 7 × 12",o:["72","84","96","90"],a:"84",e:"7 × 12 = 84."},
+
+{q:"Find 10% of 500.",o:["40","50","60","70"],a:"50",e:"10% of 500 = 50."},
+
+{q:"Solve: 144 ÷ 12",o:["10","11","12","13"],a:"12",e:"144 divided by 12 = 12."}
+/* 50 hard questions */ ],
+"Physics":[
+
+{q:"What is the SI unit of force?",o:["Newton","Joule","Watt","Pascal"],a:"Newton",e:"Force is measured in Newtons (N)."}, 
+
+{q:"The acceleration due to gravity on Earth is approximately?",o:["9.8 m/s²","10 m/s²","9 m/s","8 m/s²"],a:"9.8 m/s²",e:"Standard gravity on Earth is 9.8 m/s²."},
+
+{q:"Which of the following is a vector quantity?",o:["Speed","Mass","Velocity","Temperature"],a:"Velocity",e:"Velocity has both magnitude and direction."},
+
+{q:"Which of the following is a scalar quantity?",o:["Force","Velocity","Energy","Acceleration"],a:"Energy",e:"Energy has magnitude only, so it is a scalar."},
+
+{q:"What is the formula for kinetic energy?",o:["KE = 1/2 mv²","KE = mgh","KE = F × d","KE = mv"],a:"KE = 1/2 mv²",e:"Kinetic energy = ½ × mass × velocity squared."},
+
+{q:"What is the formula for potential energy?",o:["PE = mgh","PE = 1/2 mv²","PE = F × d","PE = mv"],a:"PE = mgh",e:"Potential energy = mass × gravity × height."},
+
+{q:"The unit of electric current is?",o:["Ampere","Volt","Ohm","Coulomb"],a:"Ampere",e:"Current is measured in Amperes (A)."}, 
+
+{q:"The unit of electric charge is?",o:["Coulomb","Ampere","Volt","Ohm"],a:"Coulomb",e:"Charge is measured in Coulombs (C)."}, 
+
+{q:"Ohm's law is expressed as?",o:["V = IR","F = ma","P = VI","E = mc²"],a:"V = IR",e:"Voltage = Current × Resistance."},
+
+{q:"A freely falling object experiences?",o:["Constant speed","Acceleration","No motion","Deceleration"],a:"Acceleration",e:"Gravity causes acceleration during free fall."},
+
+{q:"What is the speed of light in vacuum?",o:["3 × 10⁸ m/s","3 × 10⁶ m/s","3 × 10⁵ m/s","3 × 10⁷ m/s"],a:"3 × 10⁸ m/s",e:"Speed of light in vacuum ≈ 3 × 10⁸ m/s."},
+
+{q:"Which law states F = ma?",o:["Newton’s First Law","Newton’s Second Law","Newton’s Third Law","Law of Gravitation"],a:"Newton’s Second Law",e:"Second law relates force, mass and acceleration."},
+
+{q:"Which law states that every action has an equal and opposite reaction?",o:["Newton’s First Law","Newton’s Second Law","Newton’s Third Law","Law of Inertia"],a:"Newton’s Third Law",e:"Third law explains action-reaction pairs."},
+
+{q:"The unit of work is?",o:["Joule","Newton","Watt","Pascal"],a:"Joule",e:"Work = Force × distance; unit is Joule (J)."}, 
+
+{q:"Power is defined as?",o:["Work/Time","Force × Distance","Energy × Time","Mass × Acceleration"],a:"Work/Time",e:"Power = Work ÷ Time."}, 
+
+{q:"Which of the following is NOT a fundamental force?",o:["Gravitational","Electromagnetic","Friction","Strong Nuclear"],a:"Friction",e:"Friction is a contact force, not a fundamental force."},
+
+{q:"The SI unit of pressure is?",o:["Pascal","Newton","Joule","Watt"],a:"Pascal",e:"Pressure = Force ÷ Area; unit is Pascal (Pa)."}, 
+
+{q:"The bending of light when it passes from one medium to another is called?",o:["Reflection","Refraction","Diffraction","Dispersion"],a:"Refraction",e:"Refraction is the bending of light."},
+
+{q:"The splitting of light into its component colors is called?",o:["Reflection","Refraction","Dispersion","Diffraction"],a:"Dispersion",e:"Dispersion separates white light into colors."},
+
+{q:"The unit of frequency is?",o:["Hertz","Second","Meter","Newton"],a:"Hertz",e:"Frequency is measured in Hertz (Hz)."}, 
+
+{q:"What is the wavelength symbol?",o:["λ","ν","f","c"],a:"λ",e:"Wavelength is denoted by lambda (λ)."}, 
+
+{q:"The speed of sound in air is approximately?",o:["340 m/s","300 m/s","400 m/s","500 m/s"],a:"340 m/s",e:"Speed of sound ≈ 340 m/s in air at room temperature."},
+
+{q:"Which phenomenon causes a rainbow?",o:["Reflection","Refraction and Dispersion","Diffraction","Interference"],a:"Refraction and Dispersion",e:"Rainbows form due to refraction and dispersion of light."},
+
+{q:"Which of the following is an insulator?",o:["Copper","Aluminum","Rubber","Iron"],a:"Rubber",e:"Rubber does not conduct electricity."},
+
+{q:"Which of the following is a conductor?",o:["Plastic","Wood","Copper","Glass"],a:"Copper",e:"Copper conducts electricity."},
+
+{q:"Acceleration due to gravity on Moon is?",o:["9.8 m/s²","1.6 m/s²","3.7 m/s²","8.9 m/s²"],a:"1.6 m/s²",e:"Moon’s gravity ≈ 1.6 m/s²."},
+
+{q:"Energy stored in a stretched spring is called?",o:["Kinetic energy","Elastic potential energy","Chemical energy","Gravitational energy"],a:"Elastic potential energy",e:"A stretched spring stores elastic potential energy."},
+
+{q:"Which of the following waves require a medium?",o:["Light wave","Sound wave","X-ray","Radio wave"],a:"Sound wave",e:"Sound needs a medium to travel."},
+
+{q:"Which of these is a transverse wave?",o:["Sound wave","Light wave","Shock wave","Longitudinal wave"],a:"Light wave",e:"Light waves are transverse."},
+
+{q:"Which of these is a longitudinal wave?",o:["Sound wave","Light wave","Water wave","Radio wave"],a:"Sound wave",e:"Sound waves are longitudinal."},
+
+{q:"The unit of electric resistance is?",o:["Ohm","Ampere","Volt","Coulomb"],a:"Ohm",e:"Resistance is measured in Ohms (Ω)."}, 
+
+{q:"A freely falling body has?",o:["Uniform velocity","Accelerated motion","No motion","Deceleration"],a:"Accelerated motion",e:"Gravity causes acceleration during free fall."},
+
+{q:"What is the value of standard atmospheric pressure?",o:["1 × 10⁵ Pa","1 × 10³ Pa","1 × 10⁴ Pa","1 × 10² Pa"],a:"1 × 10⁵ Pa",e:"Standard atmospheric pressure ≈ 1 × 10⁵ Pa."},
+
+{q:"Unit of energy is?",o:["Joule","Watt","Newton","Volt"],a:"Joule",e:"Energy is measured in Joules (J)."}, 
+
+{q:"Unit of work done is?",o:["Joule","Watt","Pascal","Newton"],a:"Joule",e:"Work = Force × distance; unit is Joule."},
+
+{q:"Which of these is NOT a vector?",o:["Force","Displacement","Speed","Acceleration"],a:"Speed",e:"Speed has magnitude only, not direction."},
+
+{q:"Which of these is a scalar?",o:["Velocity","Force","Temperature","Acceleration"],a:"Temperature",e:"Temperature has magnitude only."},
+
+{q:"What is the SI unit of energy?",o:["Joule","Watt","Newton","Pascal"],a:"Joule",e:"Energy is measured in Joules."},
+
+{q:"Which force keeps planets in orbit?",o:["Electromagnetic","Gravitational","Friction","Tension"],a:"Gravitational",e:"Gravity keeps planets in orbit."},
+
+{q:"Which of these is the first law of thermodynamics?",o:["Energy cannot be created or destroyed","Force = mass × acceleration","Every action has equal reaction","Light bends"],a:"Energy cannot be created or destroyed",e:"First law: energy conservation."},
+
+{q:"Unit of frequency?",o:["Hertz","Joule","Newton","Ampere"],a:"Hertz",e:"Frequency is measured in Hertz."},
+
+{q:"Energy of a body in motion is called?",o:["Potential energy","Kinetic energy","Chemical energy","Electric energy"],a:"Kinetic energy",e:"Kinetic energy = ½ mv²."},
+
+{q:"The formula for work done is?",o:["W = F × d","W = m × a","W = P × t","W = mgh"],a:"W = F × d",e:"Work = Force × displacement in the direction of force."},
+
+{q:"Unit of power is?",o:["Watt","Newton","Joule","Ampere"],a:"Watt",e:"Power = Work ÷ Time; unit is Watt (W)."}, 
+
+{q:"Which type of lens is thicker at the middle?",o:["Concave","Convex","Plano","Diverging"],a:"Convex",e:"Convex lenses are thicker at the middle."},
+
+{q:"Which type of lens is thinner at the middle?",o:["Convex","Concave","Plano","Biconvex"],a:"Concave",e:"Concave lenses are thinner at the middle."},
+
+{q:"The image formed by a plane mirror is?",o:["Real","Virtual","Inverted","Magnified"],a:"Virtual",e:"Plane mirrors form virtual images."},
+
+{q:"Which phenomenon causes echo?",o:["Reflection of sound","Refraction of sound","Diffraction of sound","Interference of sound"],a:"Reflection of sound",e:"Echo occurs due to reflection of sound."},
+
+{q:"The SI unit of pressure is?",o:["Pascal","Newton","Joule","Watt"],a:"Pascal",e:"Pressure = Force ÷ Area; unit is Pascal."},
+
+{q:"Which of these quantities is dimensionless?",o:["Refractive index","Force","Mass","Energy"],a:"Refractive index",e:"Refractive index has no dimensions."},
+
+{q:"The symbol for magnetic flux is?",o:["Φ","B","E","F"],a:"Φ",e:"Magnetic flux is denoted by Φ."}
+ /* 50 hard questions */ ],
+"Chemistry":[
+{q:"What is the chemical symbol for water?",o:["H2O","O2","CO2","HO"],a:"H2O",e:"Water is made of 2 hydrogen and 1 oxygen atoms, H2O."},
+
+{q:"What is the atomic number of Carbon?",o:["6","12","14","8"],a:"6",e:"Carbon has 6 protons, so atomic number = 6."},
+
+{q:"Which of the following is an alkali metal?",o:["Sodium","Calcium","Aluminium","Oxygen"],a:"Sodium",e:"Alkali metals are in group 1; Sodium is one."},
+
+{q:"Which gas is essential for combustion?",o:["Oxygen","Nitrogen","Hydrogen","Carbon dioxide"],a:"Oxygen",e:"Oxygen supports combustion."},
+
+{q:"pH value less than 7 indicates?",o:["Acidic","Neutral","Alkaline","Basic"],a:"Acidic",e:"pH < 7 indicates acid."},
+
+{q:"pH value equal to 7 indicates?",o:["Neutral","Acidic","Basic","Alkaline"],a:"Neutral",e:"pH = 7 is neutral."},
+
+{q:"pH value greater than 7 indicates?",o:["Alkaline","Acidic","Neutral","Strong acid"],a:"Alkaline",e:"pH > 7 indicates base/alkaline."},
+
+{q:"What is the chemical formula of table salt?",o:["NaCl","KCl","CaCl2","Na2CO3"],a:"NaCl",e:"Sodium chloride is NaCl."},
+
+{q:"Which of the following is a noble gas?",o:["Neon","Oxygen","Nitrogen","Hydrogen"],a:"Neon",e:"Neon is a noble gas in group 18."},
+
+{q:"What is the chemical symbol for Sodium?",o:["Na","S","So","N"],a:"Na",e:"Sodium is Na."},
+
+{q:"Which element is a halogen?",o:["Chlorine","Oxygen","Carbon","Calcium"],a:"Chlorine",e:"Halogens are group 17 elements; chlorine is one."},
+
+{q:"Which gas causes acid rain?",o:["Sulfur dioxide","Oxygen","Hydrogen","Nitrogen"],a:"Sulfur dioxide",e:"SO2 reacts with water to form acid rain."},
+
+{q:"The atomic mass of Hydrogen is approximately?",o:["1","2","4","12"],a:"1",e:"Hydrogen has atomic mass ≈ 1 u."},
+
+{q:"The process of converting solid to gas is called?",o:["Sublimation","Evaporation","Condensation","Melting"],a:"Sublimation",e:"Sublimation is solid → gas without liquid."},
+
+{q:"The process of converting liquid to gas is called?",o:["Evaporation","Condensation","Sublimation","Freezing"],a:"Evaporation",e:"Evaporation is liquid → gas."},
+
+{q:"The process of converting gas to liquid is called?",o:["Condensation","Evaporation","Sublimation","Melting"],a:"Condensation",e:"Gas → liquid is condensation."},
+
+{q:"Which of the following is a compound?",o:["Water","Oxygen","Iron","Hydrogen"],a:"Water",e:"Water (H2O) is a compound of H and O."},
+
+{q:"Which is a mixture?",o:["Air","Water","CO2","H2O"],a:"Air",e:"Air contains multiple gases, so it is a mixture."},
+
+{q:"The chemical symbol for Iron?",o:["Fe","Ir","I","In"],a:"Fe",e:"Iron is Fe."},
+
+{q:"Which of the following is an acid?",o:["HCl","NaOH","KOH","CaO"],a:"HCl",e:"Hydrochloric acid is HCl."},
+
+{q:"Which of the following is a base?",o:["NaOH","HCl","CO2","SO2"],a:"NaOH",e:"Sodium hydroxide is a base."},
+
+{q:"Which of the following is an indicator?",o:["Litmus","Sodium","Oxygen","Water"],a:"Litmus",e:"Litmus indicates acid or base."},
+
+{q:"What is the chemical formula of ammonia?",o:["NH3","CH4","H2O","CO2"],a:"NH3",e:"Ammonia is NH3."},
+
+{q:"Which gas is released when acids react with metals?",o:["Hydrogen","Oxygen","Carbon dioxide","Nitrogen"],a:"Hydrogen",e:"Acid + metal → hydrogen gas + salt."},
+
+{q:"Which of the following is a transition metal?",o:["Iron","Sodium","Calcium","Carbon"],a:"Iron",e:"Iron is a transition element."},
+
+{q:"Which of the following is a metalloid?",o:["Boron","Oxygen","Calcium","Sodium"],a:"Boron",e:"Boron has properties of metal and non-metal."},
+
+{q:"Which of these is a covalent compound?",o:["H2O","NaCl","KCl","MgO"],a:"H2O",e:"Water is covalent."},
+
+{q:"Which of these is an ionic compound?",o:["NaCl","H2O","CO2","CH4"],a:"NaCl",e:"NaCl is ionic."},
+
+{q:"Which of the following is a hydrocarbon?",o:["CH4","H2O","NaCl","NH3"],a:"CH4",e:"Methane is CH4, a hydrocarbon."},
+
+{q:"The chemical symbol for Gold?",o:["Au","Ag","Ga","Gd"],a:"Au",e:"Gold is Au."},
+
+{q:"The main gas in the atmosphere?",o:["Nitrogen","Oxygen","Carbon dioxide","Hydrogen"],a:"Nitrogen",e:"Atmosphere ≈ 78% nitrogen."},
+
+{q:"Which of the following is a halide?",o:["NaCl","H2O","CO2","CH4"],a:"NaCl",e:"Halide salts contain halogen."},
+
+{q:"Which of these is an alkane?",o:["CH4","C2H4","C2H2","CH2O"],a:"CH4",e:"Methane (CH4) is an alkane."},
+
+{q:"Which of these is an alkene?",o:["C2H4","CH4","C2H2","C2H6"],a:"C2H4",e:"Ethene (C2H4) is an alkene with double bond."},
+
+{q:"Which of these is an alkyne?",o:["C2H2","CH4","C2H4","C2H6"],a:"C2H2",e:"Ethyne (C2H2) has triple bond."},
+
+{q:"Electrolysis is a process of?",o:["Decomposition using electricity","Combustion","Condensation","Freezing"],a:"Decomposition using electricity",e:"Electrolysis decomposes substances using electricity."},
+
+{q:"Avogadro’s number is approximately?",o:["6.02 × 10²³","3 × 10⁸","9.8","1.6 × 10⁻¹⁹"],a:"6.02 × 10²³",e:"Avogadro’s number ≈ 6.02 × 10²³ particles/mol."},
+
+{q:"The chemical symbol for Silver?",o:["Ag","Au","Si","Al"],a:"Ag",e:"Silver is Ag."},
+
+{q:"Which of these is an oxidizing agent?",o:["Oxygen","Hydrogen","Sodium","Nitrogen"],a:"Oxygen",e:"Oxygen is a common oxidizer."},
+
+{q:"Which of these is a reducing agent?",o:["Hydrogen","Oxygen","Nitrogen","Carbon dioxide"],a:"Hydrogen",e:"Hydrogen can reduce other compounds."},
+
+{q:"What is molarity?",o:["Moles of solute per liter of solution","Mass of solute","Volume of solution","Density"],a:"Moles of solute per liter of solution",e:"Molarity = moles/L."},
+
+{q:"Which of the following is a chemical change?",o:["Rusting of iron","Melting ice","Boiling water","Dissolving sugar"],a:"Rusting of iron",e:"Rusting forms a new substance; chemical change."},
+
+{q:"Which of the following is a physical change?",o:["Melting ice","Burning wood","Rusting iron","Digesting food"],a:"Melting ice",e:"Melting ice only changes state; physical change."},
+
+{q:"Which element has atomic number 1?",o:["Hydrogen","Helium","Oxygen","Carbon"],a:"Hydrogen",e:"Hydrogen has atomic number 1."},
+
+{q:"Which of these is a base?",o:["NaOH","HCl","CO2","SO2"],a:"NaOH",e:"NaOH is a base."},
+
+{q:"Which of these is an acid?",o:["H2SO4","NaOH","KOH","CaO"],a:"H2SO4",e:"Sulfuric acid is H2SO4."},
+
+{q:"Which of these compounds is ionic?",o:["NaCl","CH4","CO2","H2O"],a:"NaCl",e:"NaCl is ionic."},
+
+{q:"Which of these compounds is covalent?",o:["CH4","NaCl","KBr","CaCl2"],a:"CH4",e:"CH4 is covalent."},
+
+{q:"Which element is a non-metal?",o:["Oxygen","Iron","Sodium","Calcium"],a:"Oxygen",e:"Oxygen is non-metal."},
+
+{q:"Which element is a metal?",o:["Sodium","Oxygen","Chlorine","Carbon"],a:"Sodium",e:"Sodium is metal."}
+/* 50 hard questions */ ],
+"Biology":[
+{q:"What is the basic unit of life?",o:["Cell","Tissue","Organ","Organism"],a:"Cell",e:"The cell is the basic structural and functional unit of life."},
+
+{q:"Which part of the cell contains genetic material?",o:["Nucleus","Cytoplasm","Ribosome","Mitochondria"],a:"Nucleus",e:"Nucleus contains DNA which carries genetic material."},
+
+{q:"Which organelle is known as the powerhouse of the cell?",o:["Mitochondria","Ribosome","Chloroplast","Golgi body"],a:"Mitochondria",e:"Mitochondria produces energy through respiration."},
+
+{q:"Which process do plants use to make food?",o:["Photosynthesis","Respiration","Transpiration","Fermentation"],a:"Photosynthesis",e:"Plants make food using sunlight in photosynthesis."},
+
+{q:"Which pigment gives plants their green color?",o:["Chlorophyll","Carotene","Xanthophyll","Anthocyanin"],a:"Chlorophyll",e:"Chlorophyll absorbs light for photosynthesis."},
+
+{q:"Which part of the plant conducts water?",o:["Xylem","Phloem","Root hair","Leaf"],a:"Xylem",e:"Xylem transports water from roots to leaves."},
+
+{q:"Which part of the plant transports food?",o:["Phloem","Xylem","Stem","Leaf"],a:"Phloem",e:"Phloem transports organic food from leaves to other parts."},
+
+{q:"Which process releases energy from glucose?",o:["Respiration","Photosynthesis","Transpiration","Fermentation"],a:"Respiration",e:"Respiration breaks down glucose to release energy."},
+
+{q:"Which blood cells fight infections?",o:["White blood cells","Red blood cells","Platelets","Plasma"],a:"White blood cells",e:"White blood cells defend the body against pathogens."},
+
+{q:"Which blood cells carry oxygen?",o:["Red blood cells","White blood cells","Platelets","Plasma"],a:"Red blood cells",e:"Red blood cells carry oxygen using hemoglobin."},
+
+{q:"Which part of the human brain controls balance?",o:["Cerebellum","Cerebrum","Medulla","Hypothalamus"],a:"Cerebellum",e:"Cerebellum regulates balance and coordination."},
+
+{q:"Which system is responsible for hormone production?",o:["Endocrine system","Respiratory system","Digestive system","Nervous system"],a:"Endocrine system",e:"Endocrine glands secrete hormones directly into the blood."},
+
+{q:"Which gas do humans exhale?",o:["Carbon dioxide","Oxygen","Nitrogen","Hydrogen"],a:"Carbon dioxide",e:"Humans exhale carbon dioxide after respiration."},
+
+{q:"Which organ filters blood to produce urine?",o:["Kidney","Liver","Heart","Lung"],a:"Kidney",e:"Kidneys remove waste and produce urine."},
+
+{q:"What is the male reproductive cell?",o:["Sperm","Egg","Zygote","Embryo"],a:"Sperm",e:"Sperm is the male gamete."},
+
+{q:"What is the female reproductive cell?",o:["Egg","Sperm","Zygote","Embryo"],a:"Egg",e:"Egg (ovum) is the female gamete."},
+
+{q:"Fertilization occurs in which part of the female reproductive system?",o:["Fallopian tube","Uterus","Ovary","Vagina"],a:"Fallopian tube",e:"Fertilization usually occurs in the fallopian tube."},
+
+{q:"Which process produces gametes?",o:["Meiosis","Mitosis","Fertilization","Pollination"],a:"Meiosis",e:"Meiosis reduces chromosome number to produce gametes."},
+
+{q:"Which process results in growth and repair of cells?",o:["Mitosis","Meiosis","Fertilization","Respiration"],a:"Mitosis",e:"Mitosis produces identical cells for growth and repair."},
+
+{q:"Which organ produces bile?",o:["Liver","Pancreas","Stomach","Gall bladder"],a:"Liver",e:"Liver produces bile to digest fats."},
+
+{q:"Which organ stores bile?",o:["Gall bladder","Liver","Pancreas","Stomach"],a:"Gall bladder",e:"Gall bladder stores and releases bile."},
+
+{q:"Which part of the digestive system absorbs nutrients?",o:["Small intestine","Large intestine","Stomach","Esophagus"],a:"Small intestine",e:"Small intestine absorbs nutrients into the blood."},
+
+{q:"Which vitamin is produced in the skin when exposed to sunlight?",o:["Vitamin D","Vitamin C","Vitamin A","Vitamin K"],a:"Vitamin D",e:"Sunlight triggers Vitamin D production in the skin."},
+
+{q:"Which blood group is known as universal donor?",o:["O negative","AB positive","A positive","B negative"],a:"O negative",e:"O negative can donate blood to all groups."},
+
+{q:"Which blood group is known as universal recipient?",o:["AB positive","O negative","A positive","B negative"],a:"AB positive",e:"AB positive can receive blood from any group."},
+
+{q:"Which is the largest organ in the human body?",o:["Skin","Liver","Heart","Lung"],a:"Skin",e:"Skin is the largest organ by surface area."},
+
+{q:"Which is the main excretory product in humans?",o:["Urea","Carbon dioxide","Water","Sweat"],a:"Urea",e:"Urea is produced by the kidneys from nitrogen metabolism."},
+
+{q:"Which part of the neuron carries impulses away from the cell body?",o:["Axon","Dendrite","Nucleus","Synapse"],a:"Axon",e:"Axon transmits impulses away from the neuron cell body."},
+
+{q:"Which part of the neuron receives impulses?",o:["Dendrite","Axon","Cell body","Nucleus"],a:"Dendrite",e:"Dendrites receive incoming signals."},
+
+{q:"Which process occurs in chloroplasts?",o:["Photosynthesis","Respiration","Fermentation","Transpiration"],a:"Photosynthesis",e:"Chloroplasts carry out photosynthesis."},
+
+{q:"Which type of respiration occurs without oxygen?",o:["Anaerobic","Aerobic","Photosynthesis","Fermentation"],a:"Anaerobic",e:"Anaerobic respiration occurs without oxygen."},
+
+{q:"Which type of respiration requires oxygen?",o:["Aerobic","Anaerobic","Fermentation","Photosynthesis"],a:"Aerobic",e:"Aerobic respiration requires oxygen to produce energy."},
+
+{q:"Which structure connects muscles to bones?",o:["Tendon","Ligament","Cartilage","Joint"],a:"Tendon",e:"Tendons attach muscles to bones."},
+
+{q:"Which structure connects bones to bones?",o:["Ligament","Tendon","Cartilage","Joint"],a:"Ligament",e:"Ligaments connect bones to bones."},
+
+{q:"Which process helps in water movement from roots to leaves?",o:["Transpiration","Photosynthesis","Respiration","Evaporation"],a:"Transpiration",e:"Transpiration causes water to move upward through xylem."},
+
+{q:"Which part of the plant anchors it to the soil?",o:["Root","Stem","Leaf","Flower"],a:"Root",e:"Roots anchor and absorb water/minerals."},
+
+{q:"Which gas is produced during photosynthesis?",o:["Oxygen","Carbon dioxide","Nitrogen","Hydrogen"],a:"Oxygen",e:"Photosynthesis produces oxygen as a byproduct."},
+
+{q:"Which gas is consumed during photosynthesis?",o:["Carbon dioxide","Oxygen","Nitrogen","Hydrogen"],a:"Carbon dioxide",e:"Plants take in carbon dioxide for photosynthesis."},
+
+{q:"Which blood component helps in clotting?",o:["Platelets","Red blood cells","White blood cells","Plasma"],a:"Platelets",e:"Platelets form blood clots to stop bleeding."},
+
+{q:"Which part of the human brain controls breathing?",o:["Medulla","Cerebrum","Cerebellum","Hypothalamus"],a:"Medulla",e:"Medulla oblongata regulates breathing."},
+
+{q:"Which organ in humans detoxifies chemicals?",o:["Liver","Kidney","Lung","Heart"],a:"Liver",e:"Liver detoxifies harmful substances in the blood."},
+
+{q:"Which macronutrient provides the most energy?",o:["Fat","Carbohydrate","Protein","Vitamin"],a:"Fat",e:"Fat provides 9 kcal/g, the highest energy per gram."},
+
+{q:"Which macronutrient is the main source of energy?",o:["Carbohydrate","Fat","Protein","Vitamin"],a:"Carbohydrate",e:"Carbohydrates are the main energy source."},
+
+{q:"Which process converts glucose to energy in cells?",o:["Cellular respiration","Photosynthesis","Transpiration","Fermentation"],a:"Cellular respiration",e:"Cells use glucose and oxygen to release energy."},
+
+{q:"Which organisms make their own food?",o:["Autotrophs","Heterotrophs","Parasites","Fungi"],a:"Autotrophs",e:"Autotrophs can synthesize food from inorganic sources."},
+
+{q:"Which organisms cannot make their own food?",o:["Heterotrophs","Autotrophs","Algae","Plants"],a:"Heterotrophs",e:"Heterotrophs obtain food from other organisms."},
+
+{q:"Which part of the leaf allows gas exchange?",o:["Stomata","Cuticle","Xylem","Phloem"],a:"Stomata",e:"Stomata permit exchange of gases like O2 and CO2."},
+
+{q:"Which organ stores excess glucose as glycogen?",o:["Liver","Kidney","Heart","Pancreas"],a:"Liver",e:"Liver stores glucose as glycogen."},
+
+{q:"Which process in plants causes loss of water vapor?",o:["Transpiration","Photosynthesis","Respiration","Diffusion"],a:"Transpiration",e:"Transpiration is the loss of water vapor through stomata."}
+ /* 50 hard questions */ ],
+ "Economics":[
+{q:"What is the basic problem of economics?",o:["Scarcity of resources","Abundance of goods","Unlimited money","Population growth"],a:"Scarcity of resources",e:"Economics studies how scarce resources are allocated."},
+
+{q:"Who is the father of modern economics?",o:["Adam Smith","Karl Marx","John Maynard Keynes","David Ricardo"],a:"Adam Smith",e:"Adam Smith wrote 'The Wealth of Nations'."},
+
+{q:"What is opportunity cost?",o:["The next best alternative foregone","Total cost","Profit","Revenue"],a:"The next best alternative foregone",e:"Opportunity cost is what you give up when choosing one option over another."},
+
+{q:"What is meant by demand?",o:["Quantity of goods consumers are willing to buy","Price of goods","Supply of goods","Revenue earned"],a:"Quantity of goods consumers are willing to buy",e:"Demand is the desire backed by purchasing power."},
+
+{q:"What is supply?",o:["Quantity of goods producers are willing to sell","Price of goods","Quantity demanded","Income"],a:"Quantity of goods producers are willing to sell",e:"Supply is the quantity producers are ready to sell at various prices."},
+
+{q:"Law of demand states?",o:["Demand falls as price rises","Demand rises as price rises","Supply falls as price rises","Price is constant"],a:"Demand falls as price rises",e:"Higher prices generally reduce demand."},
+
+{q:"Law of supply states?",o:["Supply rises as price rises","Supply falls as price rises","Demand rises as price falls","Price falls as supply rises"],a:"Supply rises as price rises",e:"Producers supply more when prices increase."},
+
+{q:"What is equilibrium price?",o:["Price where demand equals supply","Maximum price","Minimum price","Price set by government"],a:"Price where demand equals supply",e:"Equilibrium price balances quantity demanded and supplied."},
+
+{q:"Which is a factor of production?",o:["Land","Price","Tax","Profit"],a:"Land",e:"Factors of production: land, labor, capital, entrepreneurship."},
+
+{q:"Which is a factor of production?",o:["Labor","Price","Revenue","Demand"],a:"Labor",e:"Labor is human effort used in production."},
+
+{q:"Which is a factor of production?",o:["Capital","Wage","Rent","Interest"],a:"Capital",e:"Capital includes tools, machinery, and equipment used in production."},
+
+{q:"Which is a factor of production?",o:["Entrepreneurship","Price","Cost","Tax"],a:"Entrepreneurship",e:"Entrepreneurship organizes resources and takes risks."},
+
+{q:"What is inflation?",o:["General rise in prices","Fall in prices","Increase in supply","Decrease in demand"],a:"General rise in prices",e:"Inflation means prices of goods/services rise over time."},
+
+{q:"What is deflation?",o:["General fall in prices","Rise in prices","High demand","High supply"],a:"General fall in prices",e:"Deflation is a decrease in general price levels."},
+
+{q:"Which type of market has many buyers and sellers?",o:["Perfect competition","Monopoly","Oligopoly","Monopsony"],a:"Perfect competition",e:"Perfect competition has many buyers and sellers with no single influence on price."},
+
+{q:"Which type of market has one seller?",o:["Monopoly","Perfect competition","Oligopoly","Monopsony"],a:"Monopoly",e:"Monopoly has one seller dominating the market."},
+
+{q:"Which type of market has few sellers?",o:["Oligopoly","Monopoly","Perfect competition","Monopsony"],a:"Oligopoly",e:"Oligopoly has few sellers controlling market supply."},
+
+{q:"What is Gross Domestic Product (GDP)?",o:["Total value of goods and services produced within a country","Total exports","National income","Government revenue"],a:"Total value of goods and services produced within a country",e:"GDP measures a country’s economic activity."},
+
+{q:"What is scarcity?",o:["Limited resources vs unlimited wants","Abundance of goods","High population","Low demand"],a:"Limited resources vs unlimited wants",e:"Scarcity arises when resources are limited compared to wants."},
+
+{q:"What is microeconomics?",o:["Study of individual units","Study of the whole economy","Government policies","International trade"],a:"Study of individual units",e:"Microeconomics focuses on households, firms, and markets."},
+
+{q:"What is macroeconomics?",o:["Study of the whole economy","Study of individual units","Price of goods","Supply and demand"],a:"Study of the whole economy",e:"Macroeconomics looks at GDP, inflation, unemployment, etc."},
+
+{q:"Which is a direct tax?",o:["Income tax","Sales tax","VAT","Custom duty"],a:"Income tax",e:"Direct tax is paid directly to the government by individuals or firms."},
+
+{q:"Which is an indirect tax?",o:["VAT","Income tax","Wealth tax","Personal tax"],a:"VAT",e:"Indirect taxes are collected via goods and services."},
+
+{q:"What is monetary policy?",o:["Control of money supply by the central bank","Government spending","Price control","Taxation"],a:"Control of money supply by the central bank",e:"Monetary policy regulates money supply and interest rates."},
+
+{q:"What is fiscal policy?",o:["Government spending and taxation","Central bank policy","Money supply","Interest rates"],a:"Government spending and taxation",e:"Fiscal policy involves taxes and government expenditure."},
+
+{q:"Which is a renewable resource?",o:["Solar energy","Coal","Petroleum","Natural gas"],a:"Solar energy",e:"Renewable resources can be replenished naturally."},
+
+{q:"Which is a non-renewable resource?",o:["Coal","Solar energy","Wind","Water"],a:"Coal",e:"Non-renewable resources cannot be easily replaced."},
+
+{q:"What is trade?",o:["Exchange of goods and services","Production of goods","Consumption only","Saving"],a:"Exchange of goods and services",e:"Trade involves buying and selling goods/services."},
+
+{q:"What is export?",o:["Goods sold abroad","Goods bought from abroad","Domestic consumption","Government purchase"],a:"Goods sold abroad",e:"Exports are sold to foreign countries."},
+
+{q:"What is import?",o:["Goods bought from abroad","Goods sold abroad","Production","Domestic trade"],a:"Goods bought from abroad",e:"Imports are purchased from other countries."},
+
+{q:"What is price elasticity of demand?",o:["Responsiveness of quantity demanded to price change","Cost of production","Income effect","Supply change"],a:"Responsiveness of quantity demanded to price change",e:"Elasticity measures how demand responds to price."},
+
+{q:"What is monopoly power?",o:["Ability to control price","Ability to produce","Ability to sell more","Ability to buy"],a:"Ability to control price",e:"Monopolists can influence market price due to lack of competition."},
+
+{q:"Which is a factor affecting demand?",o:["Price of related goods","Supply","Cost of production","Tax"],a:"Price of related goods",e:"Price of substitutes or complements affects demand."},
+
+{q:"Which is a factor affecting supply?",o:["Cost of production","Income","Taste","Population"],a:"Cost of production",e:"Higher production costs can reduce supply."},
+
+{q:"What is market?",o:["Place where buyers and sellers meet","Bank","Factory","Government office"],a:"Place where buyers and sellers meet",e:"A market facilitates exchange of goods/services."},
+
+{q:"What is profit?",o:["Revenue minus cost","Total revenue","Total cost","Income tax"],a:"Revenue minus cost",e:"Profit = Revenue – Cost."},
+
+{q:"What is utility?",o:["Satisfaction derived from goods/services","Cost of production","Income","Price"],a:"Satisfaction derived from goods/services",e:"Utility is the pleasure or satisfaction from consumption."},
+
+{q:"What is consumption?",o:["Use of goods/services to satisfy wants","Production of goods","Saving","Investment"],a:"Use of goods/services to satisfy wants",e:"Consumption involves using goods and services."},
+
+{q:"What is production?",o:["Creation of goods/services","Buying goods","Selling goods","Saving"],a:"Creation of goods/services",e:"Production is converting resources into goods/services."},
+
+{q:"Which is a capital resource?",o:["Machinery","Labor","Land","Entrepreneurship"],a:"Machinery",e:"Capital includes tools, machines, and equipment."},
+
+{q:"Which is a labor resource?",o:["Human effort","Machinery","Land","Capital"],a:"Human effort",e:"Labor is human work used in production."},
+
+{q:"Which is a land resource?",o:["Natural resources","Machinery","Labor","Money"],a:"Natural resources",e:"Land includes all natural resources used in production."},
+
+{q:"Which is an entrepreneurial resource?",o:["Risk-taking and management","Labor","Land","Capital"],a:"Risk-taking and management",e:"Entrepreneurs organize factors of production and take risks."},
+
+{q:"What is economic growth?",o:["Increase in national output","Decrease in unemployment","Decrease in prices","Increase in taxes"],a:"Increase in national output",e:"Economic growth occurs when GDP rises."},
+
+{q:"What is unemployment?",o:["People willing and able to work without jobs","People working","People retired","People studying"],a:"People willing and able to work without jobs",e:"Unemployment measures labor not engaged in productive work."},
+
+{q:"What is inflation rate?",o:["Percentage increase in general price level","Decrease in prices","GDP growth","Interest rate"],a:"Percentage increase in general price level",e:"Inflation rate = % increase in prices over time."},
+
+{q:"Which is a capital-intensive industry?",o:["Steel production","Handmade crafts","Farming by hand","Small-scale bakery"],a:"Steel production",e:"Capital-intensive industries use more machinery and equipment."},
+
+{q:"Which is a labor-intensive industry?",o:["Handmade crafts","Steel production","Car factory","Oil refinery"],a:"Handmade crafts",e:"Labor-intensive industries rely more on human effort."}
+/* 50 hard questions */ ],
+"Government":[
+{q:"What is the meaning of government?",o:["Organization that makes and enforces laws","Private company","School system","Family structure"],a:"Organization that makes and enforces laws",e:"Government is the authority that governs a community or country."},
+
+{q:"Which is a type of government?",o:["Democracy","Market","Religion","Culture"],a:"Democracy",e:"Democracy is a system where citizens participate in decision-making."},
+
+{q:"What is democracy?",o:["Government by the people","Government by force","Government by one person","Government by the elite"],a:"Government by the people",e:"In democracy, the people have the power through elections."},
+
+{q:"Which is a feature of democracy?",o:["Free and fair elections","Censorship","Dictatorship","Forced labor"],a:"Free and fair elections",e:"Democracy requires elections where people choose their leaders."},
+
+{q:"What is sovereignty?",o:["Supreme authority of the state","Local government office","Political party","Public opinion"],a:"Supreme authority of the state",e:"Sovereignty means a state has the ultimate power within its territory."},
+
+{q:"What is a constitution?",o:["Fundamental law of a country","Collection of taxes","Religious book","Political party"],a:"Fundamental law of a country",e:"The constitution sets rules and powers of government."},
+
+{q:"Which organ makes laws?",o:["Legislature","Executive","Judiciary","Civil service"],a:"Legislature",e:"Legislature (Parliament/National Assembly) enacts laws."},
+
+{q:"Which organ enforces laws?",o:["Executive","Legislature","Judiciary","Police"],a:"Executive",e:"The executive implements and enforces laws."},
+
+{q:"Which organ interprets laws?",o:["Judiciary","Legislature","Executive","Police"],a:"Judiciary",e:"Judiciary decides on the meaning and application of laws."},
+
+{q:"Who is the head of the executive in Nigeria?",o:["President","Governor","Chief Justice","Speaker"],a:"President",e:"The President is the head of Nigeria’s federal executive."},
+
+{q:"What is federalism?",o:["Division of power between central and regional governments","Unitary government","Dictatorship","Communism"],a:"Division of power between central and regional governments",e:"Federalism shares power between national and state governments."},
+
+{q:"Which is a level of government in Nigeria?",o:["Federal","State","Local","All of the above"],a:"All of the above",e:"Nigeria has federal, state, and local governments."},
+
+{q:"Who makes local laws?",o:["Local government council","National Assembly","President","Governor"],a:"Local government council",e:"Local councils legislate for local affairs."},
+
+{q:"Who is the head of a state government?",o:["Governor","President","Mayor","Speaker"],a:"Governor",e:"The governor leads the executive at the state level."},
+
+{q:"What is an election?",o:["Process of choosing leaders","Law making","Judging disputes","Military action"],a:"Process of choosing leaders",e:"Elections allow citizens to select representatives."},
+
+{q:"Which is a political party?",o:["APC","Naira","Union Bank","Shell"],a:"APC",e:"Political parties contest elections to gain power."},
+
+{q:"Who can vote in Nigeria?",o:["Citizen aged 18 and above","Any resident","Foreigners","Children"],a:"Citizen aged 18 and above",e:"Voting right is for Nigerians 18+ who are registered."},
+
+{q:"What is a democracy?",o:["Government of the people, by the people, for the people","Rule by military","Rule by king","Rule by few"],a:"Government of the people, by the people, for the people",e:"Democracy emphasizes citizen participation."},
+
+{q:"What is separation of powers?",o:["Division of government functions among legislature, executive, judiciary","One person controls everything","Military control","Unions control government"],a:"Division of government functions among legislature, executive, judiciary",e:"Prevents abuse of power by distributing responsibilities."},
+
+{q:"Who is the head of the local government?",o:["Chairman","President","Governor","Minister"],a:"Chairman",e:"Chairman leads the local government council."},
+
+{q:"Which system allows people to participate in government?",o:["Democracy","Dictatorship","Monarchy","Oligarchy"],a:"Democracy",e:"Democracy is based on citizen participation."},
+
+{q:"What is the function of the judiciary?",o:["Interpret laws","Make laws","Collect taxes","Enforce laws"],a:"Interpret laws",e:"Judiciary interprets and applies the law."},
+
+{q:"Who appoints judges in Nigeria?",o:["President","Governor","Voters","Legislature"],a:"President",e:"The President appoints judges subject to confirmation by the Senate."},
+
+{q:"What is a bill?",o:["Proposed law","Enacted law","Executive order","Judicial ruling"],a:"Proposed law",e:"A bill is introduced in the legislature for approval."},
+
+{q:"What is a law?",o:["Rule enacted by legislature","Suggestion","Custom","Policy"],a:"Rule enacted by legislature",e:"Laws regulate behavior and are enforceable."},
+
+{q:"Which is a fundamental human right?",o:["Right to life","Right to cheat","Right to steal","Right to traffic drugs"],a:"Right to life",e:"Right to life is protected under the constitution."},
+
+{q:"Which is part of civic duties?",o:["Voting","Littering","Stealing","Corruption"],a:"Voting",e:"Civic duties include obeying laws, paying taxes, and voting."},
+
+{q:"Who is the head of the National Assembly?",o:["Senate President","President","Governor","Chief Justice"],a:"Senate President",e:"The Senate President leads the upper chamber of the National Assembly."},
+
+{q:"Which organ controls government spending?",o:["Legislature","Executive","Judiciary","Media"],a:"Legislature",e:"Legislature approves budget and monitors expenditure."},
+
+{q:"What is impeachment?",o:["Removal of public officer from office","Election","Law making","Judicial review"],a:"Removal of public officer from office",e:"Impeachment is a legal process to remove officials."},
+
+{q:"Who is the head of the federal legislature?",o:["National Assembly","President","Chief Justice","Governor"],a:"National Assembly",e:"National Assembly (Senate + House) makes federal laws."},
+
+{q:"What is a referendum?",o:["Vote by people on specific issues","Election of representatives","Judicial ruling","Executive order"],a:"Vote by people on specific issues",e:"Citizens directly vote on a proposal or law."},
+
+{q:"Which system of government has power concentrated at the center?",o:["Unitary","Federal","Confederal","Democracy"],a:"Unitary",e:"Unitary government has centralized authority."},
+
+{q:"Which system shares power between center and states?",o:["Federal","Unitary","Monarchy","Oligarchy"],a:"Federal",e:"Federal system divides power between central and regional governments."},
+
+{q:"What is dictatorship?",o:["Government by one person with absolute power","Government by citizens","Parliamentary system","Democracy"],a:"Government by one person with absolute power",e:"Dictatorship centralizes authority in one individual."},
+
+{q:"Which is a local government function?",o:["Waste management","Foreign policy","National defense","Monetary policy"],a:"Waste management",e:"Local governments handle local services like waste management."},
+
+{q:"Who heads the executive council in a state?",o:["Governor","President","Speaker","Senate President"],a:"Governor",e:"Governor leads the state executive council."},
+
+{q:"Which election elects the president?",o:["General election","Local election","Party primary","Referendum"],a:"General election",e:"Presidential elections occur nationwide."},
+
+{q:"What is rule of law?",o:["All are equal before the law","Ruler above law","Law ignores citizens","Law only for poor"],a:"All are equal before the law",e:"Rule of law ensures no one is above the law."},
+
+{q:"What is civil service?",o:["Government workers who implement policies","Politicians","Judges","Soldiers"],a:"Government workers who implement policies",e:"Civil servants manage day-to-day administration."},
+
+{q:"Who is the head of the judiciary in Nigeria?",o:["Chief Justice of Nigeria","President","Senate President","Governor"],a:"Chief Justice of Nigeria",e:"CJN leads the judicial arm of government."},
+
+{q:"What is a political party?",o:["Organization seeking to gain political power","School club","Religious group","Trade union"],a:"Organization seeking to gain political power",e:"Political parties contest elections to form government."},
+
+{q:"Which election selects representatives for the National Assembly?",o:["Legislative election","Presidential election","Local election","Referendum"],a:"Legislative election",e:"Legislative elections choose Senators and House members."},
+
+{q:"Which is a function of government?",o:["Maintain law and order","Organize parties","Make money","Provide loans"],a:"Maintain law and order",e:"Government ensures security, peace, and public order."},
+
+{q:"What is civil right?",o:["Freedom and protection guaranteed by law","Right to cheat","Right to steal","Right to evade taxes"],a:"Freedom and protection guaranteed by law",e:"Civil rights protect citizens’ freedoms."},
+
+{q:"What is decentralization?",o:["Delegation of powers from central to local government","Concentration of powers","Centralization","Imposition of laws"],a:"Delegation of powers from central to local government",e:"Decentralization transfers responsibilities to lower levels."},
+
+{q:"Which is a democratic principle?",o:["Majority rule with respect for minority rights","Tyranny","Dictatorship","Corruption"],a:"Majority rule with respect for minority rights",e:"Democracy balances majority decisions with minority rights."},
+
+{q:"Which organ approves budget?",o:["Legislature","Executive","Judiciary","Military"],a:"Legislature",e:"Legislature approves the annual budget."},
+
+{q:"Which type of government is Nigeria?",o:["Federal republic","Monarchy","Dictatorship","Unitary"],a:"Federal republic",e:"Nigeria is a federal republic with elected representatives."}
+/* 50 hard questions */ ],
+ "Literature":[
+
+{q:"Who wrote 'Things Fall Apart'?",o:["Chinua Achebe","Wole Soyinka","Ngugi wa Thiong'o","Ama Ata Aidoo"],a:"Chinua Achebe",e:"Chinua Achebe authored 'Things Fall Apart', a famous Nigerian novel."},
+
+{q:"Who is the author of 'Death and the King’s Horseman'?",o:["Wole Soyinka","Chinua Achebe","Ngugi wa Thiong'o","Ama Ata Aidoo"],a:"Wole Soyinka",e:"Wole Soyinka wrote this play, exploring Yoruba culture and colonialism."},
+
+{q:"What is a simile?",o:["Comparison using 'like' or 'as'","Direct statement","Personification","Hyperbole"],a:"Comparison using 'like' or 'as'",e:"Simile compares two things using 'like' or 'as'."},
+
+{q:"What is a metaphor?",o:["Direct comparison without 'like' or 'as'","Exaggeration","Repetition","Question"],a:"Direct comparison without 'like' or 'as'",e:"Metaphor states one thing is another."},
+
+{q:"Who wrote 'Petals of Blood'?",o:["Ngugi wa Thiong'o","Chinua Achebe","Wole Soyinka","Ama Ata Aidoo"],a:"Ngugi wa Thiong'o",e:"Ngugi wa Thiong'o authored 'Petals of Blood'."},
+
+{q:"What is personification?",o:["Giving human qualities to non-human things","A comparison using 'like' or 'as'","Exaggeration","Rhyme"],a:"Giving human qualities to non-human things",e:"Personification makes objects or animals act like humans."},
+
+{q:"Who wrote 'The Joys of Motherhood'?",o:["Ama Ata Aidoo","Chinua Achebe","Wole Soyinka","Ngugi wa Thiong'o"],a:"Ama Ata Aidoo",e:"Ama Ata Aidoo authored 'The Joys of Motherhood'."},
+
+{q:"What is alliteration?",o:["Repetition of initial consonant sounds","Repetition of words","Comparison using 'like'","Exaggeration"],a:"Repetition of initial consonant sounds",e:"Alliteration repeats starting consonants for effect."},
+
+{q:"What is onomatopoeia?",o:["Words that imitate sounds","Repetition of vowels","Comparison using 'as'","Exaggeration"],a:"Words that imitate sounds",e:"Onomatopoeia uses words like 'buzz' or 'bang'."},
+
+{q:"Who wrote 'A Grain of Wheat'?",o:["Ngugi wa Thiong'o","Chinua Achebe","Wole Soyinka","Ama Ata Aidoo"],a:"Ngugi wa Thiong'o",e:"'A Grain of Wheat' is a novel by Ngugi wa Thiong'o."},
+
+{q:"What is a stanza?",o:["Group of lines in a poem","A word","A sentence","Rhyme"],a:"Group of lines in a poem",e:"Stanza is a unit of lines in poetry."},
+
+{q:"What is a theme in literature?",o:["Central idea or message","Character","Plot","Setting"],a:"Central idea or message",e:"Theme conveys the underlying message of a literary work."},
+
+{q:"Who wrote 'Death and the King’s Horseman'?",o:["Wole Soyinka","Chinua Achebe","Ngugi wa Thiong'o","Ama Ata Aidoo"],a:"Wole Soyinka",e:"Soyinka's play addresses culture, duty, and colonial impact."},
+
+{q:"What is irony?",o:["Contrast between expectation and reality","Direct statement","Personification","Rhyme"],a:"Contrast between expectation and reality",e:"Irony occurs when the outcome is opposite of what is expected."},
+
+{q:"What is a protagonist?",o:["Main character","Opposing character","Narrator","Minor character"],a:"Main character",e:"Protagonist drives the story and faces conflicts."},
+
+{q:"What is an antagonist?",o:["Character opposing the protagonist","Main character","Narrator","Setting"],a:"Character opposing the protagonist",e:"Antagonist creates conflict for the protagonist."},
+
+{q:"What is a plot?",o:["Sequence of events in a story","Character","Theme","Setting"],a:"Sequence of events in a story",e:"Plot organizes events to develop the story."},
+
+{q:"What is a climax in literature?",o:["Highest point of tension in a story","Introduction","Conclusion","Setting"],a:"Highest point of tension in a story",e:"Climax is where the main conflict reaches its peak."},
+
+{q:"What is a narrative?",o:["Storytelling","Rhyme","Exaggeration","Song"],a:"Storytelling",e:"Narrative is the account of connected events."},
+
+{q:"Who wrote 'Arrow of God'?",o:["Chinua Achebe","Ngugi wa Thiong'o","Wole Soyinka","Ama Ata Aidoo"],a:"Chinua Achebe",e:"'Arrow of God' explores colonial Nigeria and Igbo culture."},
+
+{q:"What is a metaphor?",o:["Direct comparison without 'like' or 'as'","Comparison using 'like' or 'as'","Personification","Exaggeration"],a:"Direct comparison without 'like' or 'as'",e:"Metaphor equates two things directly for effect."},
+
+{q:"What is a simile?",o:["Comparison using 'like' or 'as'","Direct comparison","Personification","Hyperbole"],a:"Comparison using 'like' or 'as'",e:"Simile compares using 'like' or 'as'."},
+
+{q:"Who wrote 'No Longer at Ease'?",o:["Chinua Achebe","Wole Soyinka","Ngugi wa Thiong'o","Ama Ata Aidoo"],a:"Chinua Achebe",e:"'No Longer at Ease' deals with corruption and post-colonial Nigeria."},
+
+{q:"What is hyperbole?",o:["Exaggeration for effect","Direct statement","Personification","Metaphor"],a:"Exaggeration for effect",e:"Hyperbole emphasizes ideas by exaggeration."},
+
+{q:"What is a protagonist?",o:["Main character","Opposing character","Minor character","Narrator"],a:"Main character",e:"Protagonist faces conflicts and drives the story."},
+
+{q:"What is a setting?",o:["Time and place of a story","Plot","Theme","Character"],a:"Time and place of a story",e:"Setting describes where and when the story occurs."},
+
+{q:"Who wrote 'The Palm-Wine Drinkard'?",o:["Amos Tutuola","Chinua Achebe","Wole Soyinka","Ngugi wa Thiong'o"],a:"Amos Tutuola",e:"Amos Tutuola is known for 'The Palm-Wine Drinkard'."},
+
+{q:"What is a sonnet?",o:["A 14-line poem","A 5-line poem","A story","A play"],a:"A 14-line poem",e:"Sonnets are poems with 14 lines and a fixed rhyme scheme."},
+
+{q:"Who wrote 'Sizwe Bansi is Dead'?",o:["Athol Fugard","Chinua Achebe","Wole Soyinka","Ngugi wa Thiong'o"],a:"Athol Fugard",e:"Athol Fugard is a South African playwright."},
+
+{q:"What is a narrative poem?",o:["Poem that tells a story","Poem with rhyme only","Lyrical poem","Free verse poem"],a:"Poem that tells a story",e:"Narrative poems convey a story using poetic form."},
+
+{q:"What is allegory?",o:["Story with a hidden meaning","Direct story","Rhyme","Exaggeration"],a:"Story with a hidden meaning",e:"Allegories convey symbolic or moral messages."},
+
+{q:"What is a fable?",o:["Short story with a moral, often using animals","Poem","Novel","Play"],a:"Short story with a moral, often using animals",e:"Fables teach lessons using simple storytelling."},
+
+{q:"What is a tragedy?",o:["Drama ending sadly","Comedy","Story with happy ending","Poem"],a:"Drama ending sadly",e:"Tragedy involves serious themes and often sad outcomes."},
+
+{q:"What is comedy?",o:["Drama ending happily or humorously","Tragedy","Poem","Story"],a:"Drama ending happily or humorously",e:"Comedy entertains through humor or happy endings."},
+
+{q:"Who wrote 'The Interpreters'?",o:["Wole Soyinka","Chinua Achebe","Ngugi wa Thiong'o","Ama Ata Aidoo"],a:"Wole Soyinka",e:"'The Interpreters' is a novel by Wole Soyinka."},
+
+{q:"Who wrote 'The Dilemma of a Ghost'?",o:["Ama Ata Aidoo","Chinua Achebe","Wole Soyinka","Ngugi wa Thiong'o"],a:"Ama Ata Aidoo",e:"Ama Ata Aidoo wrote this play about African life."},
+
+{q:"What is theme in literature?",o:["Central idea of the story","Plot","Character","Setting"],a:"Central idea of the story",e:"Theme is the underlying message or main idea."},
+
+{q:"What is a character?",o:["Person in a story","Place","Time","Event"],a:"Person in a story",e:"Characters are individuals that participate in the story."},
+
+{q:"What is first-person narrative?",o:["Story told by 'I'","Story told by 'He/She'","Story told by 'They'","Story told by narrator only"],a:"Story told by 'I'",e:"First-person uses 'I' or 'we' to narrate events."},
+
+{q:"What is third-person narrative?",o:["Story told by 'He/She'","Story told by 'I'","Story told by 'We'","Story told by 'You'"],a:"Story told by 'He/She'",e:"Third-person uses 'he', 'she', or 'they' to narrate."},
+
+{q:"Who wrote 'Death and the King’s Horseman'?",o:["Wole Soyinka","Chinua Achebe","Ngugi wa Thiong'o","Ama Ata Aidoo"],a:"Wole Soyinka",e:"Wole Soyinka's play focuses on tradition and colonial influence."},
+
+{q:"What is a short story?",o:["Brief fictional narrative","Long poem","Play","Essay"],a:"Brief fictional narrative",e:"Short stories are concise narratives with a focus on plot and characters."},
+
+{q:"Who wrote 'The Palm-Wine Drinkard'?",o:["Amos Tutuola","Chinua Achebe","Wole Soyinka","Ngugi wa Thiong'o"],a:"Amos Tutuola",e:"Amos Tutuola's work incorporates folklore and fantasy."},
+
+{q:"What is foreshadowing?",o:["Hints about future events","Summary of story","Plot twist","Climax"],a:"Hints about future events",e:"Foreshadowing prepares readers for upcoming events."},
+
+{q:"What is symbolism?",o:["Use of symbols to represent ideas","Direct statement","Rhyme","Plot"],a:"Use of symbols to represent ideas",e:"Symbolism uses objects or actions to signify deeper meanings."}
+/* 50 hard questions */ ],
+"Commerce":[
+{q:"What is commerce?",o:["Buying and selling of goods and services","Production of goods","Consumption","Government policy"],a:"Buying and selling of goods and services",e:"Commerce involves all activities related to trade and distribution."},
+
+{q:"What is trade?",o:["Exchange of goods and services","Production","Consumption","Saving"],a:"Exchange of goods and services",e:"Trade is the core activity of commerce."},
+
+{q:"What is wholesale?",o:["Selling in large quantities","Selling to final consumers","Retail sales","Online sales"],a:"Selling in large quantities",e:"Wholesalers sell goods in bulk to retailers or large buyers."},
+
+{q:"What is retail?",o:["Selling directly to consumers","Selling in bulk","Exporting","Importing"],a:"Selling directly to consumers",e:"Retail involves selling goods to final consumers in small quantities."},
+
+{q:"What is import?",o:["Buying goods from abroad","Selling goods abroad","Domestic trade","Local production"],a:"Buying goods from abroad",e:"Imports are goods brought into a country."},
+
+{q:"What is export?",o:["Selling goods abroad","Buying goods from abroad","Local trade","Consumption"],a:"Selling goods abroad",e:"Exports are goods sold to foreign countries."},
+
+{q:"What is e-commerce?",o:["Trade conducted online","Trade in markets","International trade","Domestic trade"],a:"Trade conducted online",e:"E-commerce uses internet platforms for business transactions."},
+
+{q:"What is a market?",o:["Place where buyers and sellers meet","Bank","Factory","Government office"],a:"Place where buyers and sellers meet",e:"Markets facilitate buying and selling."},
+
+{q:"Who is a consumer?",o:["Person who buys goods or services","Person who produces goods","Government officer","Banker"],a:"Person who buys goods or services",e:"Consumers purchase goods to satisfy wants."},
+
+{q:"Who is a producer?",o:["Person who makes goods or provides services","Person who buys goods","Consumer","Trader"],a:"Person who makes goods or provides services",e:"Producers create goods and services for sale."},
+
+{q:"What is a retailer?",o:["Seller to the final consumer","Seller to wholesalers","Producer","Exporter"],a:"Seller to the final consumer",e:"Retailers sell goods in small quantities to consumers."},
+
+{q:"What is a wholesaler?",o:["Sells goods in bulk to retailers","Sells to consumers","Producer","Banker"],a:"Sells goods in bulk to retailers",e:"Wholesalers act as middlemen between producers and retailers."},
+
+{q:"What is a bank?",o:["Financial institution","Market","Trading post","Factory"],a:"Financial institution",e:"Banks facilitate deposits, loans, and other financial services."},
+
+{q:"What is capital in commerce?",o:["Money or assets used to start business","Goods for sale","Consumer income","Tax"],a:"Money or assets used to start business",e:"Capital is essential for running a business."},
+
+{q:"What is profit?",o:["Revenue minus cost","Revenue only","Cost only","Tax"],a:"Revenue minus cost",e:"Profit is the financial gain from business activity."},
+
+{q:"What is loss?",o:["Cost greater than revenue","Revenue greater than cost","Revenue only","Capital only"],a:"Cost greater than revenue",e:"Loss occurs when expenses exceed income."},
+
+{q:"What is a cheque?",o:["Written order to pay money from bank account","Cash","Invoice","Receipt"],a:"Written order to pay money from bank account",e:"Cheque directs the bank to pay a specific amount."},
+
+{q:"What is an invoice?",o:["Document showing goods sold and price","Receipt for payment","Cheque","Bank statement"],a:"Document showing goods sold and price",e:"Invoices record sales details for payment."},
+
+{q:"What is insurance?",o:["Financial protection against loss","Banking service","Credit","Investment"],a:"Financial protection against loss",e:"Insurance compensates for risks or damages."},
+
+{q:"What is advertising?",o:["Promoting products to consumers","Producing goods","Selling wholesale","Saving money"],a:"Promoting products to consumers",e:"Advertising informs and persuades buyers to purchase."},
+
+{q:"What is marketing?",o:["All activities to promote and sell goods","Accounting","Saving","Importing"],a:"All activities to promote and sell goods",e:"Marketing includes research, advertising, and selling."},
+
+{q:"What is branding?",o:["Creating unique identity for products","Selling at discount","Buying in bulk","Exporting"],a:"Creating unique identity for products",e:"Brands help distinguish products from competitors."},
+
+{q:"What is e-wallet?",o:["Digital money storage","Physical cash","Bank account","Cheque book"],a:"Digital money storage",e:"E-wallet stores money digitally for online payments."},
+
+{q:"What is invoice discounting?",o:["Selling invoices to raise cash","Buying goods cheaply","Paying taxes","Collecting debts"],a:"Selling invoices to raise cash",e:"Businesses sell unpaid invoices to get immediate funds."},
+
+{q:"What is entrepreneurship?",o:["Starting and managing a business","Working as employee","Buying goods","Banking"],a:"Starting and managing a business",e:"Entrepreneurs organize resources and take risks to earn profit."},
+
+{q:"What is stock?",o:["Goods held for sale","Money","Bank deposit","Capital"],a:"Goods held for sale",e:"Stock refers to inventory of goods for business."},
+
+{q:"What is logistics?",o:["Management of movement of goods","Accounting","Marketing","Trading"],a:"Management of movement of goods",e:"Logistics ensures goods reach buyers efficiently."},
+
+{q:"What is a sole proprietorship?",o:["Business owned by one person","Business owned by many people","Government business","Franchise"],a:"Business owned by one person",e:"Sole proprietorship is simplest business form."},
+
+{q:"What is partnership?",o:["Business owned by two or more persons","Sole ownership","Government company","Corporation"],a:"Business owned by two or more persons",e:"Partnership involves shared ownership and responsibilities."},
+
+{q:"What is a limited liability company?",o:["Business with separate legal identity","Sole proprietorship","Partnership","Government business"],a:"Business with separate legal identity",e:"Shareholders’ liability is limited to their investment."},
+
+{q:"What is e-business?",o:["Business conducted online","Business offline","Traditional trade","Wholesale"],a:"Business conducted online",e:"E-business uses internet technology to manage operations."},
+
+{q:"What is capital market?",o:["Market for long-term funds","Retail market","Banking sector","Wholesale market"],a:"Market for long-term funds",e:"Capital markets help companies raise money for growth."},
+
+{q:"What is money market?",o:["Market for short-term funds","Capital market","Commodity market","Retail market"],a:"Market for short-term funds",e:"Money markets deal with loans and securities under one year."},
+
+{q:"What is a dividend?",o:["Share of profit given to shareholders","Revenue","Tax","Cost"],a:"Share of profit given to shareholders",e:"Dividends reward shareholders from company profits."},
+
+{q:"What is e-payment?",o:["Paying digitally","Paying cash","Cheque only","Barter"],a:"Paying digitally",e:"E-payment uses internet or electronic methods for transactions."},
+
+{q:"What is a franchise?",o:["Right to use business model of another","Sole ownership","Partnership","Government business"],a:"Right to use business model of another",e:"Franchise allows operation using established brand and system."},
+
+{q:"What is retailing?",o:["Selling directly to consumers","Selling in bulk","Exporting","Importing"],a:"Selling directly to consumers",e:"Retailing targets final consumers."},
+
+{q:"What is wholesale trade?",o:["Selling goods in large quantities","Selling to consumers","Online trade","Banking"],a:"Selling goods in large quantities",e:"Wholesalers sell to retailers or large buyers."},
+
+{q:"What is e-commerce platform?",o:["Website or app for online business","Bank","Market place","Factory"],a:"Website or app for online business",e:"Platforms like Shopify allow online trading."},
+
+{q:"What is ledger?",o:["Book recording financial transactions","Invoice","Cheque","Market"],a:"Book recording financial transactions",e:"Ledgers help track all business accounts."},
+
+{q:"What is balance sheet?",o:["Statement showing assets and liabilities","Invoice","Cheque","Profit only"],a:"Statement showing assets and liabilities",e:"Balance sheet shows financial position at a point in time."},
+
+{q:"What is accounting?",o:["Recording, classifying, and summarizing financial transactions","Marketing","Production","Trade"],a:"Recording, classifying, and summarizing financial transactions",e:"Accounting helps measure and communicate financial information."},
+
+{q:"What is e-invoicing?",o:["Electronic invoice","Paper invoice","Cheque","Receipt"],a:"Electronic invoice",e:"E-invoicing replaces manual invoice with digital version."},
+
+{q:"What is barter trade?",o:["Exchange of goods without money","Selling for cash","Online payment","Credit"],a:"Exchange of goods without money",e:"Barter trade involves direct exchange of products."},
+
+{q:"What is a business plan?",o:["Document outlining business objectives and strategies","Invoice","Cheque","Receipt"],a:"Document outlining business objectives and strategies",e:"Business plans guide operations and attract investors."},
+
+{q:"What is e-logistics?",o:["Digital management of goods movement","Paper-based logistics","Banking service","Trade only"],a:"Digital management of goods movement",e:"E-logistics uses technology to track and manage goods."},
+
+{q:"What is working capital?",o:["Current assets minus current liabilities","Long-term capital","Capital gain","Profit only"],a:"Current assets minus current liabilities",e:"Working capital measures short-term financial health."},
+
+{q:"What is credit?",o:["Borrowed money to be repaid","Money owned","Profit","Tax"],a:"Borrowed money to be repaid",e:"Credit allows businesses to buy goods and pay later."},
+
+{q:"What is debit?",o:["Money deducted from account","Money added","Profit","Revenue"],a:"Money deducted from account",e:"Debit reduces account balance."},
+
+{q:"What is e-inventory?",o:["Digital record of stock","Physical inventory","Cheque book","Invoice"],a:"Digital record of stock",e:"E-inventory tracks goods electronically."}
+/* 50 hard questions */ ],
+ "Accounting":[
+
+{q:"What is accounting?",o:["Recording, classifying, and summarizing financial transactions","Trading goods","Marketing products","Producing goods"],a:"Recording, classifying, and summarizing financial transactions",e:"Accounting is the process of tracking financial information of a business."},
+
+{q:"Who is an accountant?",o:["Person who manages financial records","Trader","Marketer","Producer"],a:"Person who manages financial records",e:"Accountants prepare, analyze, and report financial information."},
+
+{q:"What is a ledger?",o:["Book recording financial transactions","Invoice","Cheque","Market"],a:"Book recording financial transactions",e:"Ledgers track all account balances in a business."},
+
+{q:"What is a journal?",o:["Book for recording transactions chronologically","Book for inventory","Ledger","Invoice"],a:"Book for recording transactions chronologically",e:"Journal records transactions as they occur."},
+
+{q:"What is an asset?",o:["Resources owned by a business","Liability","Expense","Revenue"],a:"Resources owned by a business",e:"Assets include cash, equipment, and receivables."},
+
+{q:"What is a liability?",o:["Debt owed by a business","Profit","Asset","Revenue"],a:"Debt owed by a business",e:"Liabilities are obligations the business must settle."},
+
+{q:"What is capital?",o:["Owner’s investment in business","Revenue","Expense","Profit"],a:"Owner’s investment in business",e:"Capital represents the owner’s stake in the business."},
+
+{q:"What is revenue?",o:["Income earned from business operations","Expense","Debt","Capital"],a:"Income earned from business operations",e:"Revenue is money received from selling goods or services."},
+
+{q:"What is expense?",o:["Cost incurred to earn revenue","Revenue","Capital","Profit"],a:"Cost incurred to earn revenue",e:"Expenses are outflows used to generate income."},
+
+{q:"What is profit?",o:["Revenue minus expenses","Revenue only","Expense only","Capital"],a:"Revenue minus expenses",e:"Profit is financial gain after deducting costs."},
+
+{q:"What is loss?",o:["Expenses greater than revenue","Revenue greater than expenses","Capital only","Profit only"],a:"Expenses greater than revenue",e:"Loss occurs when costs exceed income."},
+
+{q:"What is double-entry bookkeeping?",o:["Each transaction affects two accounts","Transactions affect only one account","Single record system","Profit calculation only"],a:"Each transaction affects two accounts",e:"Double-entry ensures accounting equation stays balanced."},
+
+{q:"What is debit?",o:["Left side of an account","Right side of an account","Revenue","Profit"],a:"Left side of an account",e:"Debits record increases in assets and expenses, decreases in liabilities."},
+
+{q:"What is credit?",o:["Right side of an account","Left side of an account","Expense","Capital"],a:"Right side of an account",e:"Credits record increases in liabilities and revenue, decreases in assets."},
+
+{q:"What is trial balance?",o:["Statement showing all ledger balances","Balance sheet","Profit and loss account","Invoice"],a:"Statement showing all ledger balances",e:"Trial balance ensures total debits equal total credits."},
+
+{q:"What is balance sheet?",o:["Statement of assets, liabilities, and capital","Profit only","Expense statement","Revenue statement"],a:"Statement of assets, liabilities, and capital",e:"Balance sheet shows financial position at a point in time."},
+
+{q:"What is income statement?",o:["Statement showing revenue and expenses","Balance sheet","Ledger","Invoice"],a:"Statement showing revenue and expenses",e:"Income statement reports profit or loss over a period."},
+
+{q:"What is accounting equation?",o:["Assets = Liabilities + Capital","Assets = Revenue + Expense","Profit = Revenue - Expense","Capital = Profit + Loss"],a:"Assets = Liabilities + Capital",e:"This equation represents the foundation of accounting."},
+
+{q:"What is petty cash?",o:["Small amount of cash for minor expenses","Bank balance","Revenue","Asset"],a:"Small amount of cash for minor expenses",e:"Petty cash is used for small or urgent expenditures."},
+
+{q:"What is accrual accounting?",o:["Recording revenue and expenses when earned/incurred","Recording only when cash is received or paid","Single-entry system","Inventory only"],a:"Recording revenue and expenses when earned/incurred",e:"Accrual basis matches income and expenses to the period they relate to."},
+
+{q:"What is cash accounting?",o:["Recording transactions when cash is received or paid","Recording when earned/incurred","Double-entry only","Revenue only"],a:"Recording transactions when cash is received or paid",e:"Cash basis records transactions at the time of cash flow."},
+
+{q:"What is depreciation?",o:["Reduction in value of asset over time","Increase in asset","Expense","Revenue"],a:"Reduction in value of asset over time",e:"Depreciation spreads cost of fixed assets over useful life."},
+
+{q:"What is accounts receivable?",o:["Money owed to business by customers","Debt owed to suppliers","Revenue","Profit"],a:"Money owed to business by customers",e:"Receivables are amounts expected from clients."},
+
+{q:"What is accounts payable?",o:["Money business owes to suppliers","Money owed by customers","Revenue","Profit"],a:"Money business owes to suppliers",e:"Payables are obligations to settle debts."},
+
+{q:"What is a ledger account?",o:["Individual record of each item in ledger","Trial balance","Invoice","Cashbook"],a:"Individual record of each item in ledger",e:"Ledger accounts record all transactions affecting a particular account."},
+
+{q:"What is capital expenditure?",o:["Spending on fixed assets","Revenue expense","Salary payment","Profit"],a:"Spending on fixed assets",e:"Capital expenditure buys long-term assets like buildings or equipment."},
+
+{q:"What is revenue expenditure?",o:["Spending on day-to-day operations","Buying fixed assets","Investment","Loan"],a:"Spending on day-to-day operations",e:"Revenue expenditure is for maintenance, wages, and utilities."},
+
+{q:"What is trial balance error?",o:["Difference between total debits and credits","Profit","Loss","Asset mismatch"],a:"Difference between total debits and credits",e:"Errors occur if debits do not equal credits."},
+
+{q:"What is nominal account?",o:["Accounts related to expenses, losses, incomes, gains","Assets","Liabilities","Capital"],a:"Accounts related to expenses, losses, incomes, gains",e:"Nominal accounts track profit and loss items."},
+
+{q:"What is real account?",o:["Accounts related to assets and liabilities","Revenue","Expenses","Income"],a:"Accounts related to assets and liabilities",e:"Real accounts track tangible and intangible assets."},
+
+{q:"What is personal account?",o:["Accounts related to individuals or organizations","Asset","Expense","Revenue"],a:"Accounts related to individuals or organizations",e:"Personal accounts include customers, suppliers, and owners."},
+
+{q:"What is journalizing?",o:["Recording transactions in the journal","Posting to ledger","Preparing balance sheet","Profit calculation"],a:"Recording transactions in the journal",e:"Journalizing is the first step in bookkeeping."},
+
+{q:"What is posting?",o:["Transferring journal entries to ledger","Recording in journal","Calculating profit","Preparing invoice"],a:"Transferring journal entries to ledger",e:"Posting updates ledger balances for each account."},
+
+{q:"What is trial balance purpose?",o:["Check accuracy of ledger entries","Calculate revenue","Compute profit","Prepare invoice"],a:"Check accuracy of ledger entries",e:"Trial balance ensures debits equal credits."},
+
+{q:"What is cash book?",o:["Record of cash transactions","Ledger","Journal","Balance sheet"],a:"Record of cash transactions",e:"Cash book tracks all cash inflows and outflows."},
+
+{q:"What is petty cash book?",o:["Record of petty cash transactions","Ledger","Journal","Balance sheet"],a:"Record of petty cash transactions",e:"Tracks small cash expenses separately."},
+
+{q:"What is suspense account?",o:["Temporary account for discrepancies","Asset account","Liability account","Revenue account"],a:"Temporary account for discrepancies",e:"Used to balance trial balance temporarily until errors are resolved."},
+
+{q:"What is bank reconciliation?",o:["Comparing bank statement with cashbook","Preparing balance sheet","Posting journal","Calculating profit"],a:"Comparing bank statement with cashbook",e:"Reconciliation identifies differences and errors between bank and records."},
+
+{q:"What is provision?",o:["Estimated liability or expense","Revenue","Asset","Profit"],a:"Estimated liability or expense",e:"Provisions anticipate future obligations or losses."},
+
+{q:"What is capital account?",o:["Owner’s equity account","Revenue account","Expense account","Asset account"],a:"Owner’s equity account",e:"Tracks owner’s investment and withdrawals."},
+
+{q:"What is drawing?",o:["Owner’s withdrawal from business","Revenue","Expense","Profit"],a:"Owner’s withdrawal from business",e:"Drawings reduce the owner’s capital."},
+
+{q:"What is accrual?",o:["Revenue earned or expense incurred not yet received/paid","Cash transaction","Asset only","Liability only"],a:"Revenue earned or expense incurred not yet received/paid",e:"Accrual recognizes transactions regardless of cash flow."},
+
+{q:"What is accounting period?",o:["Time interval for preparing financial statements","Day only","Hour only","Week only"],a:"Time interval for preparing financial statements",e:"Accounting period could be monthly, quarterly, or annually."},
+
+{q:"What is financial statement?",o:["Summary of financial activities and position","Journal","Ledger","Invoice"],a:"Summary of financial activities and position",e:"Financial statements communicate performance and financial position."},
+
+{q:"What is working capital?",o:["Current assets minus current liabilities","Capital only","Revenue minus expense","Profit only"],a:"Current assets minus current liabilities",e:"Working capital measures short-term financial health."},
+
+{q:"What is accruals and prepayments?",o:["Adjustments for unpaid expenses and received income","Cash only","Capital only","Revenue only"],a:"Adjustments for unpaid expenses and received income",e:"Ensures correct period matching in accrual accounting."},
+
+{q:"What is trial balance limitation?",o:["Does not detect all errors","Calculates profit","Shows revenue only","Shows assets only"],a:"Does not detect all errors",e:"Trial balance cannot catch compensating errors or omissions."},
+
+{q:"What is capital expenditure?",o:["Long-term spending on assets","Revenue expense","Expense only","Profit"],a:"Long-term spending on assets",e:"Used to acquire or improve fixed assets."},
+
+{q:"What is revenue expenditure?",o:["Spending for day-to-day operations","Buying long-term assets","Profit only","Revenue only"],a:"Spending for day-to-day operations",e:"Revenue expenses maintain assets or operations."}
+/* 50 hard questions */ ],
+"Geography":[
+
+{q:"What is geography?",o:["Study of Earth's features and human interaction","Study of stars","Study of literature","Study of economics"],a:"Study of Earth's features and human interaction",e:"Geography examines the Earth, its environments, and human activities."},
+
+{q:"What is latitude?",o:["Distance north or south of the equator","Distance east or west of Greenwich","Height above sea level","Distance from a mountain"],a:"Distance north or south of the equator",e:"Latitude lines run parallel to the equator and measure north-south position."},
+
+{q:"What is longitude?",o:["Distance east or west of Greenwich","Distance north or south of the equator","Distance from sea","Height above sea level"],a:"Distance east or west of Greenwich",e:"Longitude lines run from pole to pole and measure east-west position."},
+
+{q:"What is the equator?",o:["0° latitude","0° longitude","Prime meridian","Tropic of Cancer"],a:"0° latitude",e:"Equator divides Earth into Northern and Southern Hemispheres."},
+
+{q:"What is the prime meridian?",o:["0° longitude","0° latitude","Equator","Tropic of Capricorn"],a:"0° longitude",e:"Prime meridian divides Earth into Eastern and Western Hemispheres."},
+
+{q:"What is a plateau?",o:["Elevated flat land","Lowland","Hill","Valley"],a:"Elevated flat land",e:"Plateaus are highlands with relatively flat surfaces."},
+
+{q:"What is a valley?",o:["Low area between hills or mountains","Highland","Plateau","River"],a:"Low area between hills or mountains",e:"Valleys are depressions often formed by rivers."},
+
+{q:"What is a delta?",o:["Landform at river mouth","Mountain","Plateau","Desert"],a:"Landform at river mouth",e:"Deltas form where rivers deposit sediment as they enter the sea."},
+
+{q:"What is a watershed?",o:["Area draining into a river","Desert area","Mountain peak","Ocean"],a:"Area draining into a river",e:"Watersheds collect rainfall and channel it into rivers and streams."},
+
+{q:"What is climate?",o:["Long-term weather pattern","Daily weather","Humidity only","Rainfall only"],a:"Long-term weather pattern",e:"Climate represents typical atmospheric conditions over years."},
+
+{q:"What is weather?",o:["Short-term atmospheric conditions","Climate","Earth's surface","Ocean currents"],a:"Short-term atmospheric conditions",e:"Weather changes daily and includes temperature, wind, and precipitation."},
+
+{q:"What is erosion?",o:["Wearing away of land by natural forces","Building up of land","Formation of mountains","River deposition"],a:"Wearing away of land by natural forces",e:"Erosion occurs due to wind, water, or ice."},
+
+{q:"What is deposition?",o:["Laying down of eroded materials","Wearing away of land","Volcanic eruption","Earthquake"],a:"Laying down of eroded materials",e:"Deposition occurs when sediments are dropped after transportation."},
+
+{q:"What is a river?",o:["Natural flowing watercourse","Lake","Ocean","Pond"],a:"Natural flowing watercourse",e:"Rivers flow from higher to lower elevations and empty into seas or oceans."},
+
+{q:"What is a lake?",o:["Inland body of water","River","Ocean","Desert"],a:"Inland body of water",e:"Lakes are large, enclosed freshwater or saltwater bodies."},
+
+{q:"What is a mountain?",o:["Land rising above surrounding areas","Valley","Plateau","Plain"],a:"Land rising above surrounding areas",e:"Mountains have steep slopes and significant height."},
+
+{q:"What is a plain?",o:["Flat low-lying land","Hill","Mountain","Plateau"],a:"Flat low-lying land",e:"Plains are generally level lands suitable for agriculture."},
+
+{q:"What is a desert?",o:["Dry area with little rainfall","Rainforest","Mountain","Lake"],a:"Dry area with little rainfall",e:"Deserts have sparse vegetation and limited water."},
+
+{q:"What is a rainforest?",o:["Dense forest with high rainfall","Savanna","Desert","Mountain"],a:"Dense forest with high rainfall",e:"Rainforests support rich biodiversity and heavy precipitation."},
+
+{q:"What is savanna?",o:["Grassland with scattered trees","Dense forest","Desert","Plateau"],a:"Grassland with scattered trees",e:"Savannas are tropical grasslands with occasional trees."},
+
+{q:"What is an isthmus?",o:["Narrow strip of land connecting two larger areas","River","Valley","Mountain"],a:"Narrow strip of land connecting two larger areas",e:"Isthmus links land masses and separates water bodies."},
+
+{q:"What is a peninsula?",o:["Land surrounded by water on three sides","Island","Desert","Valley"],a:"Land surrounded by water on three sides",e:"Peninsulas extend into water bodies but are connected to mainland."},
+
+{q:"What is an island?",o:["Land completely surrounded by water","Peninsula","Desert","Mountain"],a:"Land completely surrounded by water",e:"Islands are isolated land masses in oceans or rivers."},
+
+{q:"What is a delta?",o:["Landform at river mouth","Valley","Mountain","Plateau"],a:"Landform at river mouth",e:"Deltas form from deposited sediments at river mouths."},
+
+{q:"What is a glacier?",o:["Mass of moving ice","Lake","River","Ocean"],a:"Mass of moving ice",e:"Glaciers slowly flow and shape the landscape."},
+
+{q:"What is a volcano?",o:["Mountain with magma eruption","Hill","Plateau","Plain"],a:"Mountain with magma eruption",e:"Volcanoes erupt lava, ash, and gases."},
+
+{q:"What is an earthquake?",o:["Sudden shaking of the ground","Volcanic eruption","Tsunami","Flood"],a:"Sudden shaking of the ground",e:"Earthquakes occur due to tectonic movements."},
+
+{q:"What is a tsunami?",o:["Large ocean wave caused by underwater disturbances","River","Lake","Earthquake only"],a:"Large ocean wave caused by underwater disturbances",e:"Tsunamis are usually triggered by earthquakes or volcanic eruptions."},
+
+{q:"What is a delta?",o:["Deposited sediment at river mouth","Mountain","Plateau","Desert"],a:"Deposited sediment at river mouth",e:"Deltas create fertile land for agriculture."},
+
+{q:"What is a watershed?",o:["Area draining into a river","Mountain","Desert","Ocean"],a:"Area draining into a river",e:"Watersheds channel water to rivers and lakes."},
+
+{q:"What is soil?",o:["Top layer of Earth supporting plant life","Water","Air","Rock only"],a:"Top layer of Earth supporting plant life",e:"Soil contains minerals, organic matter, and nutrients."},
+
+{q:"What is erosion?",o:["Removal of soil or rock by natural forces","Formation of mountains","River deposition","Glacier"],a:"Removal of soil or rock by natural forces",e:"Erosion reshapes the Earth's surface."},
+
+{q:"What is deposition?",o:["Dropping of eroded material","Erosion","Volcanic eruption","Earthquake"],a:"Dropping of eroded material",e:"Deposition creates deltas, beaches, and sandbars."},
+
+{q:"What is weathering?",o:["Breaking down of rocks into smaller pieces","Deposition","Erosion","Flooding"],a:"Breaking down of rocks into smaller pieces",e:"Weathering is caused by physical, chemical, or biological processes."},
+
+{q:"What is a river basin?",o:["Area drained by a river and its tributaries","Desert","Mountain","Plain"],a:"Area drained by a river and its tributaries",e:"River basins collect precipitation and channel it through rivers."},
+
+{q:"What is a canyon?",o:["Deep valley with steep sides","Plateau","Plain","Desert"],a:"Deep valley with steep sides",e:"Canyons are formed by river erosion over time."},
+
+{q:"What is delta formation?",o:["Sediment deposition at river mouth","Mountain building","Volcanic activity","Earthquake fault"],a:"Sediment deposition at river mouth",e:"Rivers deposit sediments forming triangular or fan-shaped deltas."},
+
+{q:"What is a fjord?",o:["Narrow, deep sea inlet between cliffs","Desert","Plateau","River"],a:"Narrow, deep sea inlet between cliffs",e:"Fjords are formed by glacial erosion and flooding by the sea."},
+
+{q:"What is an aquifer?",o:["Underground water-bearing rock layer","River","Lake","Ocean"],a:"Underground water-bearing rock layer",e:"Aquifers supply groundwater for wells and springs."},
+
+{q:"What is urbanization?",o:["Growth of cities and towns","Rural life","Agriculture","Desertification"],a:"Growth of cities and towns",e:"Urbanization involves people moving from rural to urban areas."},
+
+{q:"What is deforestation?",o:["Clearing of forested land","Planting trees","Flooding","Erosion"],a:"Clearing of forested land",e:"Deforestation reduces biodiversity and increases soil erosion."},
+
+{q:"What is desertification?",o:["Land becomes desert due to poor management","Forest growth","River formation","Mountain building"],a:"Land becomes desert due to poor management",e:"Occurs due to overgrazing, deforestation, and climate change."},
+
+{q:"What is a contour line?",o:["Line showing elevation on map","River","Road","Forest boundary"],a:"Line showing elevation on map",e:"Contour lines connect points of equal height."},
+
+{q:"What is GIS?",o:["Geographic Information System","Global Industrial System","Geology Information Study","General Island System"],a:"Geographic Information System",e:"GIS captures, stores, analyzes, and presents spatial data."},
+
+{q:"What is cartography?",o:["Science of map-making","Study of rivers","Urban planning","Meteorology"],a:"Science of map-making",e:"Cartography involves designing and creating maps for navigation and analysis."},
+
+{q:"What is topography?",o:["Study of Earth's surface features","Weather","Climate","Population"],a:"Study of Earth's surface features",e:"Topography describes terrain shapes like mountains, valleys, and plains."},
+
+{q:"What is sustainable development?",o:["Using resources without compromising future generations","Excessive deforestation","Pollution","Urbanization"],a:"Using resources without compromising future generations",e:"Sustainable development balances environment, economy, and society."}
+ /* 50 hard questions */ ],
+"CRS":[
+{q:"Who is the founder of Christianity?",o:["Jesus Christ","Muhammad","Buddha","Confucius"],a:"Jesus Christ",e:"Jesus Christ is the central figure of Christianity."},
+
+{q:"What is the Bible?",o:["Holy book of Christians","Holy book of Muslims","Sacred text of Hindus","Book of laws"],a:"Holy book of Christians",e:"The Bible contains the Old and New Testaments."},
+
+{q:"What is the first book of the Bible?",o:["Genesis","Exodus","Leviticus","Matthew"],a:"Genesis",e:"Genesis narrates the creation of the world and early human history."},
+
+{q:"Who led the Israelites out of Egypt?",o:["Moses","Abraham","David","Solomon"],a:"Moses",e:"Moses delivered the Israelites from slavery in Egypt."},
+
+{q:"What is the meaning of salvation?",o:["Being saved from sin","Punishment","Wealth","Power"],a:"Being saved from sin",e:"Salvation is the deliverance from sin and its consequences."},
+
+{q:"What is baptism?",o:["Rite of initiation into Christianity","Marriage ceremony","Funeral ritual","Offering sacrifice"],a:"Rite of initiation into Christianity",e:"Baptism symbolizes cleansing from sin and entry into the Christian faith."},
+
+{q:"Who betrayed Jesus Christ?",o:["Judas Iscariot","Peter","John","Paul"],a:"Judas Iscariot",e:"Judas betrayed Jesus to the religious authorities for thirty pieces of silver."},
+
+{q:"What is the significance of the cross?",o:["Symbol of Jesus’ crucifixion","A weapon","A crown","A temple"],a:"Symbol of Jesus’ crucifixion",e:"The cross represents the sacrifice of Jesus for humanity's sins."},
+
+{q:"What is the Great Commandment?",o:["Love God and your neighbor","Honor elders only","Offer sacrifices","Pray alone"],a:"Love God and your neighbor",e:"Jesus taught that loving God and others is the greatest commandment."},
+
+{q:"What is the Lord's Prayer?",o:["Prayer taught by Jesus","Prayer by Moses","Prayer in Psalms","Prayer by Paul"],a:"Prayer taught by Jesus",e:"The Lord’s Prayer is a model prayer for Christians."},
+
+{q:"Who wrote most of the letters in the New Testament?",o:["Paul","Peter","John","Matthew"],a:"Paul",e:"Paul authored several epistles to early Christian communities."},
+
+{q:"What is sin?",o:["Breaking God’s law","Helping others","Charity","Prayer"],a:"Breaking God’s law",e:"Sin is any action or thought contrary to God’s will."},
+
+{q:"What is the Ten Commandments?",o:["God’s laws given to Moses","Jesus’ teachings only","Paul’s letters","Prophetic visions"],a:"God’s laws given to Moses",e:"The Ten Commandments guide moral behavior."},
+
+{q:"What is faith?",o:["Trust and belief in God","Money","Power","Knowledge"],a:"Trust and belief in God",e:"Faith involves reliance on God and His promises."},
+
+{q:"What is grace?",o:["Unmerited favor of God","Earning salvation","Law","Sacrifice"],a:"Unmerited favor of God",e:"Grace is God’s gift of forgiveness and blessings."},
+
+{q:"What is repentance?",o:["Turning away from sin","Committing sin","Earning wealth","Studying"],a:"Turning away from sin",e:"Repentance involves confessing and forsaking sins."},
+
+{q:"Who was the first man according to the Bible?",o:["Adam","Noah","Abraham","Moses"],a:"Adam",e:"Adam was the first human created by God."},
+
+{q:"Who was the first woman according to the Bible?",o:["Eve","Sarah","Mary","Rachel"],a:"Eve",e:"Eve was created from Adam’s rib to be his companion."},
+
+{q:"What is the Trinity?",o:["Father, Son, Holy Spirit","Father only","Son only","Holy Spirit only"],a:"Father, Son, Holy Spirit",e:"Christian doctrine of one God in three persons."},
+
+{q:"What is the resurrection?",o:["Jesus rising from the dead","A festival","A prophet","A parable"],a:"Jesus rising from the dead",e:"The resurrection demonstrates Jesus’ victory over death."},
+
+{q:"Who was the mother of Jesus?",o:["Mary","Elizabeth","Sarah","Rachel"],a:"Mary",e:"Mary conceived Jesus by the Holy Spirit."},
+
+{q:"What is Pentecost?",o:["Coming of the Holy Spirit","Easter","Christmas","Lent"],a:"Coming of the Holy Spirit",e:"Pentecost marks the beginning of the Christian Church’s mission."},
+
+{q:"What is communion?",o:["Ritual of bread and wine","Prayer","Baptism","Confession"],a:"Ritual of bread and wine",e:"Communion commemorates Jesus’ Last Supper."},
+
+{q:"Who denied Jesus three times?",o:["Peter","Paul","John","James"],a:"Peter",e:"Peter denied knowing Jesus before the rooster crowed."},
+
+{q:"What is the Beatitudes?",o:["Teachings of Jesus on blessings","Laws of Moses","Prophetic visions","Commandments"],a:"Teachings of Jesus on blessings",e:"The Beatitudes are part of the Sermon on the Mount."},
+
+{q:"What is the Great Commission?",o:["Jesus’ instruction to spread the gospel","Moses’ law","David’s kingdom","Paul’s letters"],a:"Jesus’ instruction to spread the gospel",e:"Christians are called to evangelize and make disciples."},
+
+{q:"What is stewardship?",o:["Managing God’s resources responsibly","Owning property","Ignoring resources","Sin"],a:"Managing God’s resources responsibly",e:"Stewardship involves using time, talent, and treasure wisely."},
+
+{q:"Who was the first king of Israel?",o:["Saul","David","Solomon","Moses"],a:"Saul",e:"Saul was anointed the first king of Israel by Samuel."},
+
+{q:"Who built the first temple?",o:["Solomon","David","Moses","Ezra"],a:"Solomon",e:"Solomon built the temple in Jerusalem for worship."},
+
+{q:"What is prophecy?",o:["Message from God delivered by prophets","Storytelling","Prayer","Sacrifice"],a:"Message from God delivered by prophets",e:"Prophets convey God’s will to the people."},
+
+{q:"Who was known for his strength in the Bible?",o:["Samson","David","Solomon","Abraham"],a:"Samson",e:"Samson was endowed with great strength by God."},
+
+{q:"What is discipleship?",o:["Following and learning from Jesus","Trading","Building","Teaching"],a:"Following and learning from Jesus",e:"Disciples are followers who imitate Jesus’ teachings."},
+
+{q:"What is parable?",o:["A short story with moral or spiritual lesson","Law","Prayer","Sacrifice"],a:"A short story with moral or spiritual lesson",e:"Jesus used parables to teach important truths."},
+
+{q:"What is the Ten Plagues of Egypt?",o:["Punishments God sent on Egypt","Blessings","Parables","Commandments"],a:"Punishments God sent on Egypt",e:"God sent plagues to convince Pharaoh to free Israelites."},
+
+{q:"Who was Abraham?",o:["Father of faith","Prophet of Islam","King","Priest"],a:"Father of faith",e:"Abraham is a model of faith in Judaism, Christianity, and Islam."},
+
+{q:"What is the Golden Rule?",o:["Do unto others as you would have them do unto you","Love only God","Hate enemies","Obey only laws"],a:"Do unto others as you would have them do unto you",e:"Jesus taught this principle in the Sermon on the Mount."},
+
+{q:"What is eternal life?",o:["Life with God after death","Earthly riches","Kingdom","Power"],a:"Life with God after death",e:"Eternal life is promised to believers who trust in God."},
+
+{q:"Who was Noah?",o:["Built the ark to survive the flood","King","Prophet","Priest"],a:"Built the ark to survive the flood",e:"Noah obeyed God and preserved life during the flood."},
+
+{q:"What is forgiveness?",o:["Pardoning someone’s wrongdoing","Revenge","Punishment","Law"],a:"Pardoning someone’s wrongdoing",e:"Forgiveness reflects God’s mercy and love."},
+
+{q:"Who wrote Revelation?",o:["John","Paul","Peter","Moses"],a:"John",e:"John wrote the book of Revelation while exiled on Patmos."},
+
+{q:"What is the role of the Holy Spirit?",o:["Guide, comfort, and empower believers","Judge only","Prophet","Law giver"],a:"Guide, comfort, and empower believers",e:"The Holy Spirit leads Christians in truth and service."},
+
+{q:"What is discipleship?",o:["Following Jesus’ teachings","Trading","Business","Kingdom"],a:"Following Jesus’ teachings",e:"Disciples are called to learn and live by Jesus’ teachings."},
+
+{q:"What is faithfulness?",o:["Being loyal and obedient to God","Trading","Ignoring God","Sin"],a:"Being loyal and obedient to God",e:"Faithfulness is central to Christian life and witness."},
+
+{q:"What is the significance of Easter?",o:["Celebrates Jesus’ resurrection","Jesus’ birth","Moses’ law","Pentecost"],a:"Celebrates Jesus’ resurrection",e:"Easter marks Jesus’ victory over sin and death."},
+
+{q:"What is the significance of Christmas?",o:["Celebrates Jesus’ birth","Jesus’ resurrection","Pentecost","Moses’ law"],a:"Celebrates Jesus’ birth",e:"Christmas commemorates the incarnation of Christ."},
+
+{q:"What is prayer?",o:["Communication with God","Trading","Sleeping","Building"],a:"Communication with God",e:"Prayer allows believers to express worship, thanks, and requests."},
+
+{q:"What is communion?",o:["Participation in bread and wine","Prayer only","Sacrifice only","Baptism only"],a:"Participation in bread and wine",e:"Communion remembers Christ’s Last Supper and sacrifice."},
+
+{q:"What is stewardship?",o:["Managing resources for God","Trading","Wealth only","Power"],a:"Managing resources for God",e:"Stewardship involves responsible care of time, talents, and resources."},
+
+{q:"What is fellowship?",o:["Association with other believers","Trading","Building only","Prayer only"],a:"Association with other believers",e:"Fellowship strengthens spiritual life and support among Christians."}
+ /* 50 hard questions */ ],
+"IRS":[
+{q:"Who is the last prophet in Islam?",o:["Prophet Muhammad","Prophet Moses","Prophet Jesus","Prophet Abraham"],a:"Prophet Muhammad",e:"Muhammad is considered the final prophet sent by Allah."},
+
+{q:"What is the holy book of Islam?",o:["Quran","Bible","Torah","Vedas"],a:"Quran",e:"The Quran is the sacred scripture revealed to Prophet Muhammad."},
+
+{q:"What is the meaning of Islam?",o:["Submission to Allah","Peace only","Prayer","Charity"],a:"Submission to Allah",e:"Islam means complete submission to the will of Allah."},
+
+{q:"What is the Shahada?",o:["Declaration of faith","Prayer","Fasting","Charity"],a:"Declaration of faith",e:"Shahada affirms that there is no god but Allah and Muhammad is His messenger."},
+
+{q:"What are the Five Pillars of Islam?",o:["Shahada, Salah, Zakat, Sawm, Hajj","Prayer, Fasting only","Charity, Worship only","Pilgrimage only"],a:"Shahada, Salah, Zakat, Sawm, Hajj",e:"These are fundamental acts required of every Muslim."},
+
+{q:"What is Salah?",o:["Daily prayer","Fasting","Charity","Pilgrimage"],a:"Daily prayer",e:"Salah is performed five times daily facing Mecca."},
+
+{q:"What is Zakat?",o:["Mandatory charity","Prayer only","Fasting only","Pilgrimage only"],a:"Mandatory charity",e:"Zakat involves giving a portion of wealth to the needy."},
+
+{q:"What is Sawm?",o:["Fasting during Ramadan","Charity","Prayer","Pilgrimage"],a:"Fasting during Ramadan",e:"Sawm requires abstaining from food, drink, and other acts from dawn to sunset during Ramadan."},
+
+{q:"What is Hajj?",o:["Pilgrimage to Mecca","Fasting","Prayer only","Charity only"],a:"Pilgrimage to Mecca",e:"Hajj is a mandatory pilgrimage for Muslims who are able to perform it once in a lifetime."},
+
+{q:"What is Ramadan?",o:["Islamic month of fasting","Festival of sacrifice","Pilgrimage month","Prayer month"],a:"Islamic month of fasting",e:"During Ramadan, Muslims fast from dawn to sunset."},
+
+{q:"What is Eid-el-Fitr?",o:["Festival marking the end of Ramadan","Festival of sacrifice","Hajj","Prayer"],a:"Festival marking the end of Ramadan",e:"Eid-el-Fitr celebrates breaking the fast at the end of Ramadan."},
+
+{q:"What is Eid-el-Kabir?",o:["Festival of sacrifice","Festival of fasting","Hajj only","Prayer"],a:"Festival of sacrifice",e:"Eid-el-Kabir commemorates Prophet Ibrahim’s willingness to sacrifice his son in obedience to Allah."},
+
+{q:"Who is Prophet Ibrahim?",o:["Father of prophets","Prophet Muhammad","Prophet Jesus","Prophet Moses"],a:"Father of prophets",e:"Ibrahim is revered for his faith and obedience to Allah."},
+
+{q:"Who received the Quran from Allah?",o:["Prophet Muhammad","Prophet Moses","Prophet Jesus","Prophet Ibrahim"],a:"Prophet Muhammad",e:"Angel Jibril (Gabriel) revealed the Quran to Prophet Muhammad."},
+
+{q:"What is Jibril’s role in Islam?",o:["Angel who delivered revelation","Messenger only","Prophet","King"],a:"Angel who delivered revelation",e:"Jibril brought Allah's message to prophets, including Muhammad."},
+
+{q:"What is the significance of Mecca?",o:["Birthplace of Prophet Muhammad","Place of Jesus","Place of Moses","Capital of Egypt"],a:"Birthplace of Prophet Muhammad",e:"Mecca is the holiest city in Islam and direction of prayer."},
+
+{q:"What is Kaaba?",o:["Sacred cube-shaped building in Mecca","Mosque in Medina","Temple in Jerusalem","River"],a:"Sacred cube-shaped building in Mecca",e:"Kaaba is the focal point of Hajj and Muslim prayer."},
+
+{q:"What is a mosque?",o:["Place of worship for Muslims","Church","Temple","Synagogue"],a:"Place of worship for Muslims",e:"Muslims gather in mosques to pray and learn about Islam."},
+
+{q:"What is the meaning of Jihad?",o:["Striving in the way of Allah","War only","Prayer only","Pilgrimage"],a:"Striving in the way of Allah",e:"Jihad refers to personal, spiritual, and sometimes physical struggle in obedience to Allah."},
+
+{q:"What is the Hijra?",o:["Migration of Prophet Muhammad to Medina","Journey to Mecca","Birth of Jesus","Battle of Badr"],a:"Migration of Prophet Muhammad to Medina",e:"Hijra marks the start of the Islamic calendar."},
+
+{q:"What is the significance of Friday (Jumu’ah)?",o:["Weekly congregational prayer","Festival","Pilgrimage","Fasting"],a:"Weekly congregational prayer",e:"Muslims gather for communal prayer and sermon every Friday."},
+
+{q:"What is the Sunnah?",o:["Practices and teachings of Prophet Muhammad","Holy book","Prayer","Charity"],a:"Practices and teachings of Prophet Muhammad",e:"Sunnah guides Muslims in daily life along with the Quran."},
+
+{q:"What is Hadith?",o:["Reports of Prophet Muhammad’s sayings and actions","Holy book","Prayer","Pilgrimage"],a:"Reports of Prophet Muhammad’s sayings and actions",e:"Hadith explains and complements Quranic teachings."},
+
+{q:"Who are the caliphs?",o:["Successors of Prophet Muhammad","Prophets","Kings","Messengers"],a:"Successors of Prophet Muhammad",e:"Caliphs led the Muslim community after Muhammad’s death."},
+
+{q:"What is the Hijab?",o:["Head covering for Muslim women","Temple","Prayer mat","Mosque"],a:"Head covering for Muslim women",e:"Hijab is worn as an expression of modesty and faith."},
+
+{q:"What is the Quranic language?",o:["Arabic","English","Hebrew","Persian"],a:"Arabic",e:"The Quran was revealed in classical Arabic."},
+
+{q:"What is the significance of Medina?",o:["City where Prophet Muhammad migrated and established community","Birthplace of Jesus","Capital of Israel","City in Egypt"],a:"City where Prophet Muhammad migrated and established community",e:"Medina became the center of the early Muslim community."},
+
+{q:"Who is Allah?",o:["God in Islam","Prophet","Angel","Saint"],a:"God in Islam",e:"Allah is the one and only God worshiped by Muslims."},
+
+{q:"What is Tawheed?",o:["Oneness of Allah","Prophet’s miracles","Prayer","Charity"],a:"Oneness of Allah",e:"Tawheed emphasizes that Allah is unique and has no partners."},
+
+{q:"What is Shariah?",o:["Islamic law","Prophet","Angel","Holy book"],a:"Islamic law",e:"Shariah guides all aspects of Muslim life."},
+
+{q:"What is Wudu?",o:["Ritual washing before prayer","Prayer","Fasting","Pilgrimage"],a:"Ritual washing before prayer",e:"Wudu purifies the body before Salah."},
+
+{q:"What is the meaning of Halal?",o:["Permissible","Forbidden","Sinful","Required"],a:"Permissible",e:"Halal refers to what is lawful under Islamic law."},
+
+{q:"What is the meaning of Haram?",o:["Forbidden","Permissible","Required","Optional"],a:"Forbidden",e:"Haram refers to what is prohibited in Islam."},
+
+{q:"What is Sadaqah?",o:["Voluntary charity","Mandatory tax","Prayer","Fasting"],a:"Voluntary charity",e:"Sadaqah is giving beyond Zakat to help others."},
+
+{q:"What is the Night of Power (Laylatul Qadr)?",o:["Night when Quran was first revealed","Eid","Hajj","Birth of Prophet"],a:"Night when Quran was first revealed",e:"Laylatul Qadr occurs during the last ten nights of Ramadan."},
+
+{q:"What is the Quranic term for angels?",o:["Malaika","Jinn","Prophets","Saints"],a:"Malaika",e:"Malaika are spiritual beings created by Allah."},
+
+{q:"What is the purpose of fasting in Ramadan?",o:["Self-purification and obedience to Allah","Wealth accumulation","Travel","Prayer only"],a:"Self-purification and obedience to Allah",e:"Fasting develops piety, self-discipline, and empathy for the needy."},
+
+{q:"Who was Abu Bakr?",o:["First caliph","Prophet","King","Angel"],a:"First caliph",e:"Abu Bakr succeeded Prophet Muhammad as leader of the Muslim community."},
+
+{q:"What is the significance of the Quranic revelation?",o:["Guidance for mankind","Holiday","Prayer","Pilgrimage"],a:"Guidance for mankind",e:"The Quran provides instructions for moral, spiritual, and social life."},
+
+{q:"What is the meaning of Iman?",o:["Faith and belief in Allah","Prayer","Charity","Fasting"],a:"Faith and belief in Allah",e:"Iman is trusting in Allah, His angels, books, prophets, and the Day of Judgment."},
+
+{q:"Who are the prophets in Islam?",o:["Messengers sent by Allah","Kings","Saints","Angels"],a:"Messengers sent by Allah",e:"Prophets convey Allah’s guidance to humanity."},
+
+{q:"What is the significance of the Quran in Muslim life?",o:["Provides guidance and law","History only","Trade rules","Social customs"],a:"Provides guidance and law",e:"Muslims follow the Quran for worship, morality, and daily conduct."},
+
+{q:"What is the meaning of Shahada?",o:["Declaration that there is no god but Allah and Muhammad is His messenger","Prayer","Fasting","Charity"],a:"Declaration that there is no god but Allah and Muhammad is His messenger",e:"Shahada is the fundamental declaration of faith in Islam."},
+
+{q:"What is the meaning of Sadaqatul Fitr?",o:["Charity given at end of Ramadan","Daily prayer","Pilgrimage","Fasting"],a:"Charity given at end of Ramadan",e:"It purifies fasting and helps the needy during Eid."},
+
+{q:"What is Iftar?",o:["Meal to break the fast","Morning prayer","Charity","Pilgrimage"],a:"Meal to break the fast",e:"Muslims eat Iftar at sunset during Ramadan."},
+
+{q:"What is the role of Prophet Muhammad as a messenger?",o:["Deliver Allah’s message to mankind","King","Angel","Saint"],a:"Deliver Allah’s message to mankind",e:"He conveyed the Quran and demonstrated Islamic teachings."},
+
+{q:"What is the importance of Hajj?",o:["Fulfillment of pillar and unity of Muslims","Prayer only","Fasting only","Charity only"],a:"Fulfillment of pillar and unity of Muslims",e:"Hajj strengthens faith, equality, and solidarity among Muslims."},
+
+{q:"What is the meaning of Takbir?",o:["Saying Allahu Akbar (God is Greatest)","Prayer","Fasting","Pilgrimage"],a:"Saying Allahu Akbar (God is Greatest)",e:"Takbir is recited during prayers and celebrations."}
+/* 50 hard questions */ ],
+"Agriculture":[
+{q:"What is agriculture?",o:["Cultivation of crops and livestock","Fishing only","Mining","Forestry only"],a:"Cultivation of crops and livestock",e:"Agriculture involves producing food, fiber, and other products from plants and animals."},
+
+{q:"What is crop rotation?",o:["Growing different crops on the same land sequentially","Growing same crop continuously","Planting only trees","Livestock rearing"],a:"Growing different crops on the same land sequentially",e:"Crop rotation maintains soil fertility and reduces pests."},
+
+{q:"What is irrigation?",o:["Artificial application of water to land","Fertilizer application","Planting crops","Harvesting"],a:"Artificial application of water to land",e:"Irrigation ensures crops get enough water for growth."},
+
+{q:"What is soil fertility?",o:["Soil's ability to support plant growth","Soil color","Soil texture","Soil temperature"],a:"Soil's ability to support plant growth",e:"Fertile soil provides essential nutrients for crops."},
+
+{q:"What is organic farming?",o:["Farming without synthetic chemicals","Farming with chemicals","Fishing","Mining"],a:"Farming without synthetic chemicals",e:"Organic farming relies on natural fertilizers and pest control methods."},
+
+{q:"What is livestock?",o:["Domesticated animals for food and work","Wild animals","Birds only","Insects only"],a:"Domesticated animals for food and work",e:"Livestock includes cattle, sheep, goats, pigs, and poultry."},
+
+{q:"What is aquaculture?",o:["Farming of fish and aquatic organisms","Planting crops","Livestock rearing","Forestry"],a:"Farming of fish and aquatic organisms",e:"Aquaculture produces fish, shellfish, and aquatic plants for food and commerce."},
+
+{q:"What is soil erosion?",o:["Wearing away of topsoil by wind or water","Soil fertility","Fertilization","Irrigation"],a:"Wearing away of topsoil by wind or water",e:"Soil erosion reduces agricultural productivity and causes land degradation."},
+
+{q:"What is deforestation?",o:["Clearing forests for land use","Planting trees","Animal rearing","Fishing"],a:"Clearing forests for land use",e:"Deforestation can lead to soil erosion and biodiversity loss."},
+
+{q:"What is a greenhouse?",o:["Structure for controlled plant growth","Farm building","Livestock pen","Storage shed"],a:"Structure for controlled plant growth",e:"Greenhouses allow temperature, light, and humidity control for plants."},
+
+{q:"What is a fertilizer?",o:["Substance that supplies nutrients to plants","Pesticide","Herbicide","Soil"],a:"Substance that supplies nutrients to plants",e:"Fertilizers enhance soil fertility and crop yield."},
+
+{q:"What is a pesticide?",o:["Chemical used to kill pests","Fertilizer","Water","Soil"],a:"Chemical used to kill pests",e:"Pesticides protect crops from insects, fungi, and weeds."},
+
+{q:"What is monoculture?",o:["Growing a single crop on a large scale","Growing multiple crops together","Livestock farming","Fallow land"],a:"Growing a single crop on a large scale",e:"Monoculture increases risk of pests and soil depletion."},
+
+{q:"What is horticulture?",o:["Cultivation of fruits, vegetables, and flowers","Livestock farming","Fishing","Forestry"],a:"Cultivation of fruits, vegetables, and flowers",e:"Horticulture focuses on high-value crops for consumption and decoration."},
+
+{q:"What is aquaponics?",o:["Integration of fish farming and plant cultivation","Livestock farming only","Forestry","Mining"],a:"Integration of fish farming and plant cultivation",e:"Aquaponics uses fish waste as fertilizer for plants."},
+
+{q:"What is a legume?",o:["Plant that fixes nitrogen","Cereal crop","Tree","Root crop"],a:"Plant that fixes nitrogen",e:"Legumes enrich soil by converting atmospheric nitrogen into usable form."},
+
+{q:"What is composting?",o:["Decomposition of organic matter to make fertilizer","Plowing","Irrigation","Pesticide use"],a:"Decomposition of organic matter to make fertilizer",e:"Composting recycles plant and animal waste into nutrient-rich soil."},
+
+{q:"What is mechanized farming?",o:["Use of machines in agriculture","Manual farming only","Fishing","Mining"],a:"Use of machines in agriculture",e:"Tractors, harvesters, and planters increase efficiency and yield."},
+
+{q:"What is soil pH?",o:["Measure of soil acidity or alkalinity","Soil texture","Soil fertility","Soil color"],a:"Measure of soil acidity or alkalinity",e:"Soil pH affects nutrient availability and crop growth."},
+
+{q:"What is organic matter in soil?",o:["Decomposed plant and animal material","Sand","Rock","Water"],a:"Decomposed plant and animal material",e:"Organic matter improves soil fertility and structure."},
+
+{q:"What is tillage?",o:["Preparation of soil for planting","Fertilization","Pesticide application","Harvesting"],a:"Preparation of soil for planting",e:"Tillage involves plowing, harrowing, and leveling soil."},
+
+{q:"What is a seedbed?",o:["Prepared area for planting seeds","Storage area","Livestock pen","Irrigation canal"],a:"Prepared area for planting seeds",e:"Seedbeds ensure good germination and growth conditions."},
+
+{q:"What is crop yield?",o:["Amount of crop harvested per unit area","Number of farmers","Land size","Water supply"],a:"Amount of crop harvested per unit area",e:"Yield measures agricultural productivity."},
+
+{q:"What is intercropping?",o:["Growing two or more crops together","Single crop farming","Livestock only","Fishing only"],a:"Growing two or more crops together",e:"Intercropping improves soil fertility and reduces pests."},
+
+{q:"What is fallow land?",o:["Land left unplanted to restore fertility","Land with crops","Urban land","Pasture only"],a:"Land left unplanted to restore fertility",e:"Fallowing allows soil to recover nutrients."},
+
+{q:"What is soil texture?",o:["Proportion of sand, silt, and clay","Soil color","Soil fertility","Soil pH"],a:"Proportion of sand, silt, and clay",e:"Texture affects water retention, drainage, and root growth."},
+
+{q:"What is vermiculture?",o:["Use of earthworms to produce fertilizer","Livestock rearing","Crop rotation","Irrigation"],a:"Use of earthworms to produce fertilizer",e:"Earthworms help decompose organic matter into nutrient-rich castings."},
+
+{q:"What is greenhouse effect in agriculture?",o:["Warming of the environment affecting crops","Irrigation method","Fertilizer","Pesticide"],a:"Warming of the environment affecting crops",e:"Excessive greenhouse gases can alter temperature and crop productivity."},
+
+{q:"What is hydroponics?",o:["Growing plants in nutrient solution without soil","Traditional farming","Livestock rearing","Forestry"],a:"Growing plants in nutrient solution without soil",e:"Hydroponics allows rapid growth and controlled nutrition."},
+
+{q:"What is the meaning of arable land?",o:["Land suitable for crop cultivation","Land for mining","Urban land","Desert"],a:"Land suitable for crop cultivation",e:"Arable land is fertile and workable for farming."},
+
+{q:"What is soil conservation?",o:["Measures to prevent soil erosion and degradation","Planting only trees","Irrigation","Fertilization only"],a:"Measures to prevent soil erosion and degradation",e:"Conservation includes terraces, cover crops, and windbreaks."},
+
+{q:"What is a pest?",o:["Organism that harms crops","Beneficial insect","Fertilizer","Water"],a:"Organism that harms crops",e:"Pests damage crops and reduce yield if uncontrolled."},
+
+{q:"What is an insecticide?",o:["Chemical that kills insects","Fertilizer","Water","Herbicide"],a:"Chemical that kills insects",e:"Insecticides control harmful insects in agriculture."},
+
+{q:"What is a herbicide?",o:["Chemical that kills weeds","Insecticide","Fertilizer","Water"],a:"Chemical that kills weeds",e:"Herbicides remove unwanted plants that compete with crops."},
+
+{q:"What is aquifer irrigation?",o:["Using underground water for crops","River irrigation","Rain-fed farming","Surface irrigation"],a:"Using underground water for crops",e:"Water is extracted from aquifers via wells or pumps."},
+
+{q:"What is livestock feed?",o:["Food provided to animals","Water only","Fertilizer","Pesticide"],a:"Food provided to animals",e:"Proper nutrition ensures health and productivity of livestock."},
+
+{q:"What is agroforestry?",o:["Integration of trees with crops or livestock","Monoculture","Fishing","Mining"],a:"Integration of trees with crops or livestock",e:"Agroforestry improves biodiversity and soil fertility."},
+
+{q:"What is seed certification?",o:["Official verification of seed quality","Planting seeds","Harvesting","Irrigation"],a:"Official verification of seed quality",e:"Certified seeds ensure good germination, disease resistance, and yield."},
+
+{q:"What is terracing?",o:["Creating steps on slopes to reduce erosion","Fertilization","Irrigation","Planting"],a:"Creating steps on slopes to reduce erosion",e:"Terraces slow water flow and prevent soil loss."},
+
+{q:"What is a cover crop?",o:["Plant grown to protect and enrich soil","Main crop","Tree","Animal"],a:"Plant grown to protect and enrich soil",e:"Cover crops prevent erosion and improve soil fertility."},
+
+{q:"What is integrated pest management (IPM)?",o:["Combining biological, chemical, and cultural methods to control pests","Using only chemicals","Fertilization","Irrigation"],a:"Combining biological, chemical, and cultural methods to control pests",e:"IPM reduces environmental impact while controlling pests effectively."},
+
+{q:"What is mechanization?",o:["Use of machinery in farming","Manual labor","Fishing","Forestry"],a:"Use of machinery in farming",e:"Mechanization increases efficiency and reduces labor intensity."},
+
+{q:"What is precision farming?",o:["Using technology to optimize crop production","Traditional farming","Livestock only","Fishing"],a:"Using technology to optimize crop production",e:"Precision farming uses GPS, sensors, and data analysis for efficiency."},
+
+{q:"What is silage?",o:["Preserved fodder for livestock","Fresh grass only","Water","Fertilizer"],a:"Preserved fodder for livestock",e:"Silage is fermented feed stored for livestock during scarce periods."},
+
+{q:"What is organic fertilizer?",o:["Fertilizer from plant or animal waste","Chemical fertilizer","Water","Pesticide"],a:"Fertilizer from plant or animal waste",e:"Organic fertilizers enrich soil without synthetic chemicals."},
+
+{q:"What is a horticultural crop?",o:["Fruit, vegetable, or ornamental plant","Cereal crop","Livestock","Aquatic plant"],a:"Fruit, vegetable, or ornamental plant",e:"Horticultural crops are high-value plants for food or aesthetics."},
+
+{q:"What is post-harvest handling?",o:["Processes to store, transport, and preserve crops","Planting","Fertilization","Irrigation"],a:"Processes to store, transport, and preserve crops",e:"Proper handling reduces loss and maintains quality of produce."}
+/* 50 hard questions */ ],
+ "Civic Education":[
+{q:"What is Civic Education?",o:["Study of rights and responsibilities of citizens","Math study","Science study","Religious study"],a:"Study of rights and responsibilities of citizens",e:"Civic Education teaches how citizens participate responsibly in society."},
+
+{q:"What is democracy?",o:["Government by the people","Rule by king","Military rule","Dictatorship"],a:"Government by the people",e:"Democracy allows citizens to participate in governance through elections and representation."},
+
+{q:"What is citizenship?",o:["Membership in a state with rights and responsibilities","Owning property","Being wealthy","Being educated"],a:"Membership in a state with rights and responsibilities",e:"Citizens have rights and duties defined by the constitution."},
+
+{q:"What is a constitution?",o:["Supreme law of the land","Book of stories","Tax law","Religious law"],a:"Supreme law of the land",e:"The constitution outlines the structure, powers, and duties of government."},
+
+{q:"What is separation of powers?",o:["Dividing government into executive, legislative, and judiciary","Power of the king","Military control","Local government only"],a:"Dividing government into executive, legislative, and judiciary",e:"This prevents abuse of power and ensures checks and balances."},
+
+{q:"What is rule of law?",o:["Everyone is subject to the law","Only rulers obey","Law applies only to citizens","Law is optional"],a:"Everyone is subject to the law",e:"The law applies equally to all members of society, including leaders."},
+
+{q:"What is a right?",o:["A legal or moral entitlement","A duty","A responsibility","A penalty"],a:"A legal or moral entitlement",e:"Rights protect citizens’ freedoms and interests."},
+
+{q:"What is a duty?",o:["Obligation citizens must perform","Freedom only","Right only","Privilege"],a:"Obligation citizens must perform",e:"Duties include obeying laws, paying taxes, and serving the community."},
+
+{q:"What is a responsibility?",o:["Moral obligation to society","Freedom only","Punishment","Law only"],a:"Moral obligation to society",e:"Responsibilities are actions that contribute to the common good."},
+
+{q:"What is patriotism?",o:["Love and loyalty to one’s country","Hate for other countries","Obeying only rulers","Military service only"],a:"Love and loyalty to one’s country",e:"Patriotism encourages citizens to work for national development."},
+
+{q:"What is civic participation?",o:["Involvement in community and governance","Voting only","Education only","Religion only"],a:"Involvement in community and governance",e:"Participation includes voting, volunteering, advocacy, and civic engagement."},
+
+{q:"What is accountability?",o:["Being responsible for actions and decisions","Power only","Rights only","Law only"],a:"Being responsible for actions and decisions",e:"Leaders and citizens must answer for their actions."},
+
+{q:"What is transparency?",o:["Openness and honesty in government","Secrecy","Propaganda","Military rule"],a:"Openness and honesty in government",e:"Transparency ensures citizens can access information and trust governance."},
+
+{q:"What is corruption?",o:["Abuse of power for personal gain","Fairness","Lawfulness","Honesty"],a:"Abuse of power for personal gain",e:"Corruption undermines development and justice."},
+
+{q:"What is human rights?",o:["Rights inherent to every person","Law only","Privilege","Duty only"],a:"Rights inherent to every person",e:"Human rights protect dignity, freedom, and equality of all individuals."},
+
+{q:"What is democracy’s main feature?",o:["Free and fair elections","Monarchy","Dictatorship","Military rule"],a:"Free and fair elections",e:"Elections allow citizens to choose leaders and influence policy."},
+
+{q:"What is civic responsibility?",o:["Obligations to help society","Rights only","Freedom only","Wealth"],a:"Obligations to help society",e:"Civic responsibility involves actions that benefit the community."},
+
+{q:"What is rule of majority?",o:["Decisions made by more than half the voters","Decisions by king","Military rule","Law only"],a:"Decisions made by more than half the voters",e:"Majority rule guides democratic decision-making while protecting minorities."},
+
+{q:"What is freedom of speech?",o:["Right to express opinions","Obligation to stay silent","Duty only","Military order"],a:"Right to express opinions",e:"Freedom of speech allows citizens to voice thoughts and ideas legally."},
+
+{q:"What is freedom of assembly?",o:["Right to gather peacefully","Duty to assemble","Obligation to attend meetings","Punishment"],a:"Right to gather peacefully",e:"Citizens can meet to discuss issues without fear of government interference."},
+
+{q:"What is civic education about?",o:["Understanding governance and citizenship","History only","Math only","Science only"],a:"Understanding governance and citizenship",e:"It teaches rights, duties, and participation in society."},
+
+{q:"What is an election?",o:["Process of choosing leaders","Festival","Parade","Sporting event"],a:"Process of choosing leaders",e:"Elections select representatives through voting."},
+
+{q:"What is voter registration?",o:["Enrollment to vote","Voting","Paying taxes","Obeying laws"],a:"Enrollment to vote",e:"Citizens must register to participate in elections."},
+
+{q:"What is civic engagement?",o:["Active participation in community life","Obedience only","Education only","Religion only"],a:"Active participation in community life",e:"Engagement can include volunteering, advocacy, and attending meetings."},
+
+{q:"What is public service?",o:["Work done to benefit society","Private business only","Military only","School only"],a:"Work done to benefit society",e:"Public service contributes to national development and welfare."},
+
+{q:"What is social justice?",o:["Fair treatment and equality in society","Corruption","Power abuse","Lawbreaking"],a:"Fair treatment and equality in society",e:"Social justice ensures equal opportunities and rights for all citizens."},
+
+{q:"What is civic duty?",o:["Obligation to follow laws and contribute to society","Freedom only","Rights only","Wealth"],a:"Obligation to follow laws and contribute to society",e:"Civic duties include voting, obeying laws, and community service."},
+
+{q:"What is tolerance?",o:["Respect for differences","Hatred","Corruption","Violence"],a:"Respect for differences",e:"Tolerance promotes peaceful coexistence among diverse people."},
+
+{q:"What is gender equality?",o:["Equal rights and opportunities for all genders","Privilege for men","Privilege for women","Only education"],a:"Equal rights and opportunities for all genders",e:"Gender equality ensures fairness in social, economic, and political life."},
+
+{q:"What is conflict resolution?",o:["Solving disputes peacefully","War","Ignoring issues","Punishment"],a:"Solving disputes peacefully",e:"Conflict resolution prevents violence and promotes harmony."},
+
+{q:"What is civic literacy?",o:["Knowledge of rights, duties, and governance","History only","Math only","Science only"],a:"Knowledge of rights, duties, and governance",e:"Civic literacy empowers citizens to participate effectively."},
+
+{q:"What is federalism?",o:["Division of power between central and regional governments","Military rule","Monarchy","Unitary system"],a:"Division of power between central and regional governments",e:"Federalism balances power and allows regional autonomy."},
+
+{q:"What is the purpose of laws?",o:["Maintain order and protect rights","Punish only","Tax only","Education only"],a:"Maintain order and protect rights",e:"Laws regulate behavior, protect citizens, and ensure justice."},
+
+{q:"What is public accountability?",o:["Answering for actions in office","Corruption","Freedom only","Rights only"],a:"Answering for actions in office",e:"Leaders and institutions must justify their actions to the public."},
+
+{q:"What is civic responsibility of youth?",o:["Participate in elections and community service","Obey only","Stay silent","Learn only"],a:"Participate in elections and community service",e:"Youth contribute to development by being active and responsible."},
+
+{q:"What is political participation?",o:["Engagement in political activities like voting and campaigning","Education only","Work only","Religion only"],a:"Engagement in political activities like voting and campaigning",e:"Active involvement strengthens democracy and governance."},
+
+{q:"What is accountability in governance?",o:["Leaders are responsible for decisions","Freedom only","Rights only","Punishment only"],a:"Leaders are responsible for decisions",e:"Accountability prevents abuse of power and corruption."},
+
+{q:"What is civic virtue?",o:["Behavior that supports community and common good","Obedience only","Rights only","Freedom only"],a:"Behavior that supports community and common good",e:"Civic virtue includes honesty, integrity, and responsibility."},
+
+{q:"What is a civil society?",o:["Organizations outside government that promote citizen interests","Government only","Military only","School only"],a:"Organizations outside government that promote citizen interests",e:"Civil society groups advocate for human rights, democracy, and social welfare."},
+
+{q:"What is social responsibility?",o:["Duty to act for the benefit of society","Personal gain only","Obedience only","Rights only"],a:"Duty to act for the benefit of society",e:"Social responsibility includes charity, volunteering, and ethical behavior."},
+
+{q:"What is civic ethics?",o:["Moral principles guiding citizens’ behavior","Law only","Rights only","Freedom only"],a:"Moral principles guiding citizens’ behavior",e:"Civic ethics ensure citizens act responsibly and fairly."},
+
+{q:"What is human dignity?",o:["Value and respect every person deserves","Power","Corruption","Privilege"],a:"Value and respect every person deserves",e:"Human dignity underpins human rights and social justice."},
+
+{q:"What is social cohesion?",o:["Unity and harmony in society","Conflict","Division","Corruption"],a:"Unity and harmony in society",e:"Cohesion strengthens peace, stability, and development."},
+
+{q:"What is civic education goal?",o:["Produce responsible and informed citizens","Math knowledge","Science knowledge","Religious knowledge"],a:"Produce responsible and informed citizens",e:"Civic education empowers citizens to contribute positively to society."},
+
+{q:"What is electoral process?",o:["Steps involved in choosing leaders","Voting only","Education only","Law only"],a:"Steps involved in choosing leaders",e:"The process includes registration, campaigning, voting, and result announcement."},
+
+{q:"What is democratic governance?",o:["Government accountable to citizens and elected by them","Monarchy","Military rule","Dictatorship"],a:"Government accountable to citizens and elected by them",e:"Democratic governance ensures participation, transparency, and rule of law."},
+
+{q:"What is civic engagement in community?",o:["Active involvement in community development","Obedience only","Rights only","Freedom only"],a:"Active involvement in community development",e:"Engagement includes volunteering, advocacy, and community projects."},
+
+{q:"What is public participation?",o:["Involvement of citizens in decision-making","Voting only","Rights only","Obedience only"],a:"Involvement of citizens in decision-making",e:"Public participation strengthens accountability and democracy."}
+/* 50 hard questions */ ]
+};
+
+let questions=[], index=0, score=0, userAnswers=[], timer, timeLeft=1800;
+function startQuiz(sub){
+  if(!QUESTION_BANK[sub] || QUESTION_BANK[sub].length===0){alert('No questions'); return;}
+  questions=QUESTION_BANK[sub].slice(); index=0; score=0; userAnswers=[];
+  timeLeft=1800;
+  document.getElementById('dashboard').style.display='none';
+  document.getElementById('quiz').style.display='block';
+  document.getElementById('explanation').style.display='none';
+  updateProgress();
+  startTimer();
+  loadQuestion();
+}
+function startTimer(){
+  clearInterval(timer);
+  timer=setInterval(()=>{
+    if(timeLeft<=0){clearInterval(timer); showResults(); return;}
+    let m=Math.floor(timeLeft/60), s=timeLeft%60;
+    document.getElementById('timer').innerText=`Time Left: ${m}m ${s}s`;
+    timeLeft--;
+  },1000);
+}
+function updateProgress(){
+  const progress=((index)/questions.length)*100;
+  document.getElementById('progress-bar').style.width=progress+"%";
+}
+function loadQuestion(){
+  if(index>=questions.length){showResults(); return;}
+  updateProgress();
+  const q=questions[index];
+  document.getElementById('question').innerText=(index+1)+". "+q.q;
+  document.getElementById('options').innerHTML=q.o.map(opt=>`<div class='option' onclick="selectAnswer('${opt}', event)">${opt}</div>`).join('');
+  document.getElementById('explanation').style.display='none';
+}
+function selectAnswer(ans,event){
+  if(index>=questions.length) return;
+  userAnswers[index]=ans;
+  const correctAns=questions[index].a;
+  if(ans===correctAns){
+    event.target.classList.add('correct');
+    score++;
+  } else {
+    event.target.classList.add('wrong');
+    Array.from(document.getElementById('options').children).forEach(o=>{if(o.innerText===correctAns)o.classList.add('correct');});
+  }
+  document.getElementById('explanation').innerText=questions[index].e;
+  document.getElementById('explanation').style.display='block';
+  Array.from(document.getElementById('options').children).forEach(o=>o.onclick=null);
+}
+function nextQuestion(){index++; loadQuestion();}
+function showResults(){
+  clearInterval(timer);
+  document.getElementById('quiz').style.display='none';
+  document.getElementById('result').style.display='block';
+  document.getElementById('score').innerText=`Score: ${score}/${questions.length} (${Math.round(score/questions.length*100)}%)`;
+  document.getElementById('review').innerHTML=questions.map((q,i)=>`<p><strong>Q${i+1}:</strong> ${q.q}</p><p>Your answer: ${userAnswers[i]||"No answer"}</p><p>Correct: ${q.a}</p><p><em>Explanation:</em> ${q.e}</p><hr>`).join('');
+}
+function restart(){
+  document.getElementById('result').style.display='none';
+  showDashboard();
+}
+</script>
+</body>
+</html>
